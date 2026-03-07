@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agendamento Online - Clínica Saúde &amp; Bem-Estar</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * {
+            font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+        }
+
+        input,
+        select,
+        textarea,
+        button {
+            font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+        }
+
+        .step-container {
+            display: none;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        .step-container.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        .professional-card {
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .professional-card:hover {
+            transform: translateY(-2px);
+            border-color: #3b82f6;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, .15);
+        }
+
+        .professional-card.selected {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+            box-shadow: 0 0 0 2px #3b82f6;
+        }
+
+        .time-slot {
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .time-slot:hover:not(:disabled) {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        .time-slot.selected {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        .time-slot:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            background: #f3f4f6;
+            text-decoration: line-through;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div
+                    class="w-11 h-11 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl flex items-center justify-center shadow-md">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-gray-900">Agendamento Online</h1>
+                    <p class="text-xs text-blue-600 font-medium" id="clinicName">Clínica Saúde &amp; Bem-Estar</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 text-xs text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full">
+                <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                Agendamento Seguro
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-4xl mx-auto px-4 py-8 w-full">
+
+        <!-- Progress -->
+        <div class="mb-8">
+            <div class="flex justify-between items-center relative">
+                <div
+                    class="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-gray-200 -z-10 rounded-full hidden sm:block">
+                </div>
+                <div id="progressLine"
+                    class="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-blue-500 -z-10 rounded-full transition-all duration-300 hidden sm:block"
+                    style="width:0%"></div>
+                <div class="flex flex-col items-center w-1/4 z-10 step-indicator" data-step="1">
+                    <div
+                        class="w-10 h-10 rounded-full flex items-center justify-center font-bold mb-1 transition-all duration-300 bg-blue-500 text-white shadow-md border-4 border-white">
+                        1</div>
+                    <span class="text-xs font-medium text-gray-900 text-center">Profissional</span>
+                </div>
+                <div class="flex flex-col items-center w-1/4 z-10 step-indicator" data-step="2">
+                    <div
+                        class="w-10 h-10 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center font-bold mb-1 transition-all duration-300 border-4 border-white">
+                        2</div>
+                    <span class="text-xs font-medium text-gray-500 text-center">Data e Hora</span>
+                </div>
+                <div class="flex flex-col items-center w-1/4 z-10 step-indicator" data-step="3">
+                    <div
+                        class="w-10 h-10 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center font-bold mb-1 transition-all duration-300 border-4 border-white">
+                        3</div>
+                    <span class="text-xs font-medium text-gray-500 text-center">Seus Dados</span>
+                </div>
+                <div class="flex flex-col items-center w-1/4 z-10 step-indicator" data-step="4">
+                    <div
+                        class="w-10 h-10 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center font-bold mb-1 transition-all duration-300 border-4 border-white">
+                        4</div>
+                    <span class="text-xs font-medium text-gray-500 text-center">Confirmação</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+
+            <!-- Step 1: Profissional -->
+            <div id="step1" class="step-container active p-6 sm:p-10">
+                <h2 class="text-2xl font-bold text-gray-900 mb-1">Com quem deseja agendar?</h2>
+                <p class="text-gray-500 mb-6">Selecione o profissional ou a especialidade.</p>
+                <div id="noProfMessage" class="hidden text-center py-12 text-gray-400">
+                    <div class="text-5xl mb-3">👨‍⚕️</div>
+                    <p>Nenhum profissional disponível no momento.</p>
+                    <p class="text-sm mt-1">Entre em contato com a clínica para agendar.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="professionalsGrid"></div>
+                <div class="mt-8 flex justify-end">
+                    <button id="btnNext1" disabled onclick="goToStep(2)"
+                        class="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-8 py-3 rounded-xl font-medium transition-colors flex items-center gap-2">
+                        Próximo Passo <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 2: Data e Hora -->
+            <div id="step2" class="step-container p-6 sm:p-10">
+                <div class="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100">
+                    <img id="selectedProfImage" src="" class="w-14 h-14 rounded-full shadow-sm" alt="Profissional">
+                    <div>
+                        <p class="text-xs text-gray-500">Agendando com</p>
+                        <h3 id="selectedProfName" class="font-bold text-xl text-gray-900"></h3>
+                        <p id="selectedProfSpec" class="text-blue-600 text-sm font-medium"></p>
+                    </div>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-900 mb-1">Escolha a data e o horário</h2>
+                <p class="text-gray-500 mb-6">Selecione o dia e veja os horários disponíveis.</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">🗓️
+                            Data</label>
+                        <input type="date" id="dateInput"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all cursor-pointer">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">⏰ Horários
+                            Disponíveis</label>
+                        <div id="timeSlotsGrid" class="grid grid-cols-3 gap-2">
+                            <div
+                                class="col-span-3 text-center py-8 text-gray-400 border-2 border-dashed border-gray-200 rounded-xl text-sm">
+                                Selecione uma data primeiro</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-8 flex justify-between pt-6 border-t border-gray-100">
+                    <button onclick="goToStep(1)"
+                        class="text-gray-600 hover:text-gray-900 px-6 py-3 font-medium transition-colors">←
+                        Voltar</button>
+                    <button id="btnNext2" disabled onclick="goToStep(3)"
+                        class="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-8 py-3 rounded-xl font-medium transition-colors flex items-center gap-2">
+                        Próximo Passo <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 3: Dados do Paciente -->
+            <div id="step3" class="step-container p-6 sm:p-10">
+                <div class="bg-blue-50 rounded-xl p-4 flex gap-4 items-center mb-8 border border-blue-100">
+                    <div class="text-3xl">📅</div>
+                    <div>
+                        <p class="text-xs font-medium text-blue-600">Resumo do Agendamento</p>
+                        <p class="font-bold"><span id="summaryDate"></span> às <span id="summaryTime"
+                                class="text-blue-600 text-lg"></span></p>
+                        <p class="text-xs text-gray-600 mt-0.5" id="summaryProf"></p>
+                    </div>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-900 mb-1">Informe seus dados</h2>
+                <p class="text-gray-500 mb-6">Precisamos de algumas informações para confirmar a consulta.</p>
+                <form id="patientForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nome Completo *</label>
+                        <input type="text" id="patientName" required placeholder="Ex: Maria Silva"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Celular / WhatsApp *</label>
+                            <input type="tel" id="patientPhone" required placeholder="(11) 99999-9999"
+                                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">E-mail (Opcional)</label>
+                            <input type="email" id="patientEmail" placeholder="seu@email.com"
+                                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Observações</label>
+                        <textarea id="patientNotes" rows="3" placeholder="Descreva o motivo da consulta..."
+                            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none"></textarea>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-xl flex items-start gap-3 border border-gray-100">
+                        <input type="checkbox" id="termsCheck" required
+                            class="mt-1 w-5 h-5 text-blue-500 rounded focus:ring-blue-500">
+                        <label for="termsCheck" class="text-sm text-gray-600">
+                            Concordo com os <a href="#" class="text-blue-600 hover:underline">Termos de Serviço</a> e <a
+                                href="#" class="text-blue-600 hover:underline">Política de Privacidade</a>. Autorizo o
+                            envio de confirmações por WhatsApp.
+                        </label>
+                    </div>
+                </form>
+                <div class="mt-8 flex justify-between pt-6 border-t border-gray-100">
+                    <button onclick="goToStep(2)"
+                        class="text-gray-600 hover:text-gray-900 px-6 py-3 font-medium transition-colors">←
+                        Voltar</button>
+                    <button onclick="submitAppointment()" id="btnSubmit" disabled
+                        class="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
+                        Confirmar Agendamento
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 4: Sucesso -->
+            <div id="step4" class="step-container p-6 sm:p-16 text-center">
+                <div class="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <svg class="w-12 h-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                    </svg>
+                </div>
+                <h2 class="text-3xl font-bold text-gray-900 mb-4">Agendamento Confirmado! 🎉</h2>
+                <p class="text-gray-600 text-lg mb-8 max-w-md mx-auto">Sua consulta foi agendada com sucesso.</p>
+                <div
+                    class="bg-gray-50 rounded-2xl p-6 text-left max-w-sm mx-auto border border-gray-100 mb-8 shadow-sm">
+                    <h3 class="font-bold text-gray-900 border-b border-gray-200 pb-2 mb-4">Detalhes da Consulta</h3>
+                    <ul class="space-y-2 text-sm">
+                        <li class="flex justify-between"><span class="text-gray-500">Paciente:</span><strong
+                                id="finalName" class="text-gray-900"></strong></li>
+                        <li class="flex justify-between"><span class="text-gray-500">Profissional:</span><strong
+                                id="finalProf" class="text-gray-900"></strong></li>
+                        <li class="flex justify-between"><span class="text-gray-500">Data:</span><strong id="finalDate"
+                                class="text-gray-900"></strong></li>
+                        <li class="flex justify-between"><span class="text-gray-500">Horário:</span><strong
+                                id="finalTime" class="text-gray-900"></strong></li>
+                    </ul>
+                </div>
+                <div
+                    class="bg-blue-50 text-blue-800 p-4 rounded-xl text-sm max-w-sm mx-auto mb-8 flex items-start gap-3">
+                    <div class="text-xl">📱</div>
+                    <div class="text-left">Em breve você receberá uma confirmação no seu <strong>WhatsApp</strong>.
+                    </div>
+                </div>
+                <button onclick="window.location.reload()"
+                    class="text-blue-600 font-medium hover:text-blue-700 underline">Agendar outra consulta</button>
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="bg-white border-t py-5 mt-auto">
+        <div class="max-w-4xl mx-auto px-4 text-center text-sm text-gray-500">
+            <p>© 2026 Clínica Saúde &amp; Bem-Estar – Todos os direitos reservados.</p>
+            <p class="mt-1">Tecnologia por <strong>AgendaFácil</strong></p>
+        </div>
+    </footer>
+
+    <script src="google-sheets/api-sheets.js"></script>
+    <script>
+        function getPhoto(name, color) {
+            return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=${color}&color=fff`;
+        }
+
+        // =========================================================
+        // STATE
+        // =========================================================
+        let currentStep = 1;
+        let selectedProfId = null;
+        let selectedDate = null;
+        let selectedTime = null;
+
+        // =========================================================
+        // INIT
+        // =========================================================
+        document.addEventListener('DOMContentLoaded', () => {
+            renderProfessionals();
+
+            const today = new Date().toISOString().split('T')[0];
+            const dateInput = document.getElementById('dateInput');
+            dateInput.setAttribute('min', today);
+
+            dateInput.addEventListener('change', e => {
+                selectedDate = e.target.value;
+                selectedTime = null;
+                document.getElementById('btnNext2').disabled = true;
+                if (selectedDate) {
+                    const [y, m, d] = selectedDate.split('-');
+                    document.getElementById('summaryDate').textContent = `${d}/${m}/${y}`;
+                }
+                renderTimeSlots();
+            });
+
+            const form = document.getElementById('patientForm');
+            form.addEventListener('input', () => {
+                document.getElementById('btnSubmit').disabled = !form.checkValidity();
+            });
+            document.getElementById('btnSubmit').disabled = true;
+
+            // Phone mask
+            document.getElementById('patientPhone').addEventListener('input', function (e) {
+                let x = e.target.value.replace(/\D/g, '').match(/(\d{0,2})(\d{0,5})(\d{0,4})/);
+                e.target.value = !x[2] ? x[1] : '(' + x[1] + ') ' + x[2] + (x[3] ? '-' + x[3] : '');
+            });
+        });
+
+        // =========================================================
+        // STEP 1: PROFISSIONAIS
+        // =========================================================
+        async function renderProfessionals() {
+            const grid = document.getElementById('professionalsGrid');
+            const noMsg = document.getElementById('noProfMessage');
+            grid.innerHTML = '<div class="col-span-1 md:col-span-2 text-center py-6"><div class="inline-block animate-spin rounded-full h-7 w-7 border-4 border-gray-200 border-t-blue-500"></div></div>';
+            noMsg.classList.add('hidden');
+
+            try {
+                const profissionais = await SheetsAPI.list('profissionais');
+                const ativos = profissionais.filter(p => p.ativo === true || String(p.ativo).toLowerCase() === 'true');
+
+                if (ativos.length === 0) {
+                    grid.innerHTML = '';
+                    noMsg.classList.remove('hidden');
+                    return;
+                }
+
+                window._profissionaisData = ativos;
+                grid.innerHTML = ativos.map(prof => `
+        <div class="professional-card border-2 border-gray-100 rounded-xl p-4 flex items-center gap-4" onclick="selectProfessional(${prof.id}, this)">
+            <img src="${getPhoto(prof.name, prof.cor || '3b82f6')}" class="w-14 h-14 rounded-full border border-gray-100" alt="${prof.name}">
+            <div class="flex-1 min-w-0">
+                <h3 class="font-bold text-gray-900 truncate">${prof.name}</h3>
+                <p class="text-blue-600 text-sm font-medium">${prof.especialidade}</p>
+                <p class="text-xs text-gray-400 mt-1">⏰ ${prof.inicio}–${prof.fim} · ⏱️ ${prof.duracao}min</p>
+            </div>
+            <div class="w-6 h-6 rounded-full border-2 border-gray-200 flex items-center justify-center check-circle transition-all shrink-0">
+                <div class="w-3 h-3 rounded-full bg-blue-500 opacity-0 inner-circle transition-opacity"></div>
+            </div>
+        </div>`).join('');
+            } catch (err) {
+                grid.innerHTML = `<div class="col-span-1 md:col-span-2 text-center py-6 text-red-500 text-sm">Erro ao carregar profissionais: ${err.message}</div>`;
+            }
+        }
+
+        function selectProfessional(id, element) {
+            selectedProfId = id;
+            document.querySelectorAll('.professional-card').forEach(c => {
+                c.classList.remove('selected');
+                c.querySelector('.check-circle').classList.remove('border-blue-500');
+                c.querySelector('.inner-circle').classList.remove('opacity-100');
+            });
+            element.classList.add('selected');
+            element.querySelector('.check-circle').classList.add('border-blue-500');
+            element.querySelector('.inner-circle').classList.add('opacity-100');
+            document.getElementById('btnNext1').disabled = false;
+
+            const prof = window._profissionaisData.find(p => p.id == id);
+            document.getElementById('selectedProfImage').src = getPhoto(prof.name, prof.cor || '3b82f6');
+            document.getElementById('selectedProfName').textContent = prof.name;
+            document.getElementById('selectedProfSpec').textContent = prof.especialidade;
+            document.getElementById('summaryProf').textContent = `${prof.name} – ${prof.especialidade}`;
+
+            // Reset date/time when prof changes
+            selectedDate = null; selectedTime = null;
+            document.getElementById('dateInput').value = '';
+            document.getElementById('btnNext2').disabled = true;
+            document.getElementById('timeSlotsGrid').innerHTML = '<div class="col-span-3 text-center py-6 text-gray-400 border-2 border-dashed border-gray-200 rounded-xl text-sm">Selecione uma data</div>';
+        }
+
+        // =========================================================
+        // STEP 2: HORÁRIOS
+        // =========================================================
+        async function renderTimeSlots() {
+            const grid = document.getElementById('timeSlotsGrid');
+            if (!selectedDate || !selectedProfId) {
+                grid.innerHTML = '<div class="col-span-3 text-center py-6 text-gray-400 border-2 border-dashed border-gray-200 rounded-xl text-sm">Selecione uma data</div>';
+                return;
+            }
+
+            grid.innerHTML = '<div class="col-span-3 text-center py-6"><div class="inline-block animate-spin rounded-full h-7 w-7 border-4 border-gray-200 border-t-blue-500"></div></div>';
+
+            try {
+                const res = await SheetsAPI.horariosDisponiveis(selectedProfId, selectedDate);
+                const slots = res.slots;
+
+                if (slots.length === 0) {
+                    grid.innerHTML = '<div class="col-span-3 text-center py-6 text-orange-500 text-sm">Nenhum horário configurado para este profissional.</div>';
+                    return;
+                }
+
+                grid.innerHTML = slots.map(s => {
+                    if (!s.disponivel) {
+                        return `<button disabled class="time-slot w-full py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-400">${s.time}</button>`;
+                    } else {
+                        return `<button onclick="selectTime('${s.time}', this)" class="time-slot w-full py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700">${s.time}</button>`;
+                    }
+                }).join('');
+            } catch (e) {
+                grid.innerHTML = `<div class="col-span-3 text-center py-6 text-red-500 text-sm">Erro ao carregar horários: ${e.message}</div>`;
+            }
+        }
+
+        function selectTime(time, el) {
+            selectedTime = time;
+            document.querySelectorAll('.time-slot').forEach(b => b.classList.remove('selected'));
+            el.classList.add('selected');
+            document.getElementById('summaryTime').textContent = time;
+            document.getElementById('btnNext2').disabled = false;
+        }
+
+        // =========================================================
+        // STEPS NAVIGATION
+        // =========================================================
+        function goToStep(step) {
+            document.querySelectorAll('.step-container').forEach(el => el.classList.remove('active'));
+
+            document.querySelectorAll('.step-indicator').forEach(el => {
+                const s = parseInt(el.getAttribute('data-step'));
+                const circle = el.querySelector('div');
+                const text = el.querySelector('span');
+                if (s < step) {
+                    circle.className = 'w-10 h-10 rounded-full flex items-center justify-center font-bold mb-1 bg-blue-500 text-white shadow-md border-4 border-white';
+                    circle.textContent = '✓';
+                    text.className = 'text-xs font-bold text-gray-900 text-center';
+                } else if (s === step) {
+                    circle.className = 'w-10 h-10 rounded-full flex items-center justify-center font-bold mb-1 bg-blue-500 text-white shadow-md border-4 border-white';
+                    circle.textContent = s;
+                    text.className = 'text-xs font-bold text-gray-900 text-center';
+                } else {
+                    circle.className = 'w-10 h-10 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center font-bold mb-1 border-4 border-white';
+                    circle.textContent = s;
+                    text.className = 'text-xs font-medium text-gray-500 text-center';
+                }
+            });
+
+            const pct = [0, 0, 33, 66, 100];
+            document.getElementById('progressLine').style.width = pct[step] + '%';
+            document.getElementById('step' + step).classList.add('active');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            currentStep = step;
+        }
+
+        // =========================================================
+        // SUBMIT
+        // =========================================================
+        async function submitAppointment() {
+            const btn = document.getElementById('btnSubmit');
+            btn.innerHTML = '<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div> Processando...';
+            btn.disabled = true;
+
+            const name = document.getElementById('patientName').value.trim();
+            const phone = document.getElementById('patientPhone').value.trim();
+            const email = document.getElementById('patientEmail').value.trim();
+            const notes = document.getElementById('patientNotes').value.trim();
+            const prof = window._profissionaisData.find(p => p.id == selectedProfId);
+
+            try {
+                await SheetsAPI.agendar({
+                    profissional_id: selectedProfId,
+                    paciente_nome: name,
+                    telefone: phone,
+                    email: email,
+                    data: selectedDate,
+                    horario: selectedTime,
+                    tipo: 'Consulta',
+                    obs: notes
+                });
+
+                // Show success
+                document.getElementById('finalName').textContent = name;
+                document.getElementById('finalProf').textContent = prof?.name || '';
+                const [y, m, d] = selectedDate.split('-');
+                document.getElementById('finalDate').textContent = `${d}/${m}/${y}`;
+                document.getElementById('finalTime').textContent = selectedTime;
+
+                goToStep(4);
+            } catch (e) {
+                alert("Erro ao agendar: " + e.message);
+                btn.innerHTML = 'Confirmar Agendamento <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>';
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+
+</html>

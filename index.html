@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgendaFácil - Painel Administrativo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * {
+            font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+        }
+
+        input,
+        select,
+        textarea,
+        button {
+            font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+        }
+
+        .tab-active {
+            border-bottom: 3px solid #3b82f6;
+            color: #3b82f6;
+            font-weight: 600;
+        }
+
+        .stat-card {
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .appointment-slot {
+            font-size: 0.72rem;
+            padding: 3px 5px;
+            margin: 2px 0;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .calendar-day {
+            min-height: 90px;
+            border: 1px solid #e5e7eb;
+            padding: 6px;
+        }
+
+        .whatsapp-msg {
+            max-width: 75%;
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin: 6px 0;
+            font-size: 0.875rem;
+            white-space: pre-wrap;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        .whatsapp-msg {
+            animation: slideIn 0.3s ease-out;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50">
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div
+                    class="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-lg flex items-center justify-center">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-gray-900">AgendaFácil</h1>
+                    <p class="text-xs text-gray-500" id="clinicNameHeader">Clínica Saúde &amp; Bem-Estar</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <a href="agendamento.html" target="_blank"
+                    class="text-sm bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-100 font-medium">🌐
+                    Portal do Cliente</a>
+                <img id="adminAvatar" src="https://ui-avatars.com/api/?name=Admin&background=10b981&color=fff"
+                    class="w-9 h-9 rounded-full cursor-pointer" alt="Admin" title="Clique para sair"
+                    onclick="confirmarLogout()">
+                <button onclick="confirmarLogout()"
+                    class="hidden sm:flex items-center gap-1 text-xs text-gray-500 hover:text-red-600 px-2 py-1 rounded-lg hover:bg-red-50 transition-colors"
+                    title="Sair">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    Sair
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Tabs -->
+    <nav class="bg-white border-b">
+        <div class="max-w-7xl mx-auto px-4 flex gap-6 overflow-x-auto">
+            <button onclick="showTab('dashboard')" id="tab-dashboard"
+                class="tab-active py-4 px-2 text-sm whitespace-nowrap border-b-3 transition-colors">📊
+                Dashboard</button>
+            <button onclick="showTab('agenda')" id="tab-agenda"
+                class="py-4 px-2 text-sm text-gray-600 hover:text-gray-900 whitespace-nowrap transition-colors">📅
+                Agenda</button>
+            <button onclick="showTab('profissionais')" id="tab-profissionais"
+                class="py-4 px-2 text-sm text-gray-600 hover:text-gray-900 whitespace-nowrap transition-colors">👨‍⚕️
+                Profissionais</button>
+            <button onclick="showTab('pacientes')" id="tab-pacientes"
+                class="py-4 px-2 text-sm text-gray-600 hover:text-gray-900 whitespace-nowrap transition-colors">👥
+                Pacientes</button>
+            <button onclick="showTab('prontuario')" id="tab-prontuario"
+                class="py-4 px-2 text-sm text-gray-600 hover:text-gray-900 whitespace-nowrap transition-colors">📋
+                Prontuário</button>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-6">
+
+        <!-- DASHBOARD -->
+        <div id="content-dashboard" class="tab-content">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="stat-card bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+                    <p class="text-gray-500 text-xs mb-1">Hoje</p>
+                    <p class="text-3xl font-bold text-gray-900" id="statToday">0</p>
+                    <p class="text-xs text-blue-600 mt-1">agendamentos</p>
+                </div>
+                <div class="stat-card bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+                    <p class="text-gray-500 text-xs mb-1">Esta Semana</p>
+                    <p class="text-3xl font-bold text-gray-900" id="statWeek">0</p>
+                    <p class="text-xs text-purple-600 mt-1">agendamentos</p>
+                </div>
+                <div class="stat-card bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+                    <p class="text-gray-500 text-xs mb-1">Pacientes</p>
+                    <p class="text-3xl font-bold text-gray-900" id="statPatients">0</p>
+                    <p class="text-xs text-green-600 mt-1">cadastrados</p>
+                </div>
+                <div class="stat-card bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+                    <p class="text-gray-500 text-xs mb-1">Profissionais</p>
+                    <p class="text-3xl font-bold text-gray-900" id="statProfs">0</p>
+                    <p class="text-xs text-orange-600 mt-1">ativos</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="font-bold text-gray-900">📅 Agendamentos de Hoje</h2>
+                        <button onclick="showTab('agenda')" class="text-sm text-blue-600 hover:underline">Ver agenda
+                            →</button>
+                    </div>
+                    <div id="todayAppointments" class="space-y-2"></div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <h2 class="font-bold text-gray-900 mb-4">⚡ Ações Rápidas</h2>
+                    <div class="space-y-3">
+                        <button onclick="openNewAppointmentModal()"
+                            class="w-full bg-gradient-to-r from-blue-500 to-cyan-600 text-white p-3 rounded-xl text-left hover:opacity-90 transition-opacity">
+                            <div class="font-semibold">➕ Novo Agendamento</div>
+                            <div class="text-xs text-blue-100">Agendar manualmente</div>
+                        </button>
+                        <button onclick="showTab('profissionais')"
+                            class="w-full bg-white border-2 border-gray-200 p-3 rounded-xl text-left hover:border-blue-400 transition-colors">
+                            <div class="font-semibold text-gray-900">👨‍⚕️ Profissionais</div>
+                            <div class="text-xs text-gray-500">Adicionar ou editar</div>
+                        </button>
+                        <button onclick="showTab('pacientes')"
+                            class="w-full bg-white border-2 border-gray-200 p-3 rounded-xl text-left hover:border-blue-400 transition-colors">
+                            <div class="font-semibold text-gray-900">👥 Pacientes</div>
+                            <div class="text-xs text-gray-500">Ver banco de dados</div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AGENDA -->
+        <div id="content-agenda" class="tab-content hidden">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-900">Calendário de Agendamentos</h2>
+                        <p id="weekRangeLabel" class="text-sm text-gray-500 mt-1"></p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="changeWeek(-1)"
+                            class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm">← Anterior</button>
+                        <button onclick="changeWeek(0)"
+                            class="px-4 py-2 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg text-sm font-medium">Hoje</button>
+                        <button onclick="changeWeek(1)"
+                            class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm">Próxima →</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <div class="grid grid-cols-7 gap-1 min-w-[600px]" id="calendarGrid"></div>
+                </div>
+            </div>
+
+            <!-- Appointment detail panel -->
+            <div id="apptDetailPanel" class="hidden mt-4 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <h3 class="font-bold text-gray-900 mb-3">📋 Detalhes do Agendamento</h3>
+                <div id="apptDetailContent"></div>
+            </div>
+        </div>
+
+        <!-- PROFISSIONAIS -->
+        <div id="content-profissionais" class="tab-content hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-900">Profissionais</h2>
+                <button onclick="openProfModal()"
+                    class="bg-blue-500 hover:bg-blue-600 text-white px-5 py-2.5 rounded-lg font-medium flex items-center gap-2">
+                    <span class="text-lg">+</span> Adicionar
+                </button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="professionalsList"></div>
+        </div>
+
+        <!-- PACIENTES -->
+        <div id="content-pacientes" class="tab-content hidden">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
+                <h2 class="text-2xl font-bold text-gray-900">Pacientes</h2>
+                <div class="flex gap-2 w-full sm:w-auto">
+                    <input type="text" id="patientSearch" placeholder="🔍 Buscar paciente..." oninput="renderPatients()"
+                        class="px-4 py-2 border border-gray-300 rounded-lg w-full sm:w-72 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <table class="w-full">
+                    <thead class="bg-gray-50 border-b">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Telefone</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Última Consulta
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="patientsList" class="divide-y divide-gray-100"></tbody>
+                </table>
+                <div id="patientsEmpty" class="hidden py-16 text-center text-gray-400">
+                    <div class="text-5xl mb-3">👥</div>
+                    <p>Nenhum paciente cadastrado ainda.</p>
+                    <p class="text-sm mt-1">Os pacientes aparecem aqui quando fazem um agendamento.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- PRONTUÁRIO -->
+        <div id="content-prontuario" class="tab-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                <!-- FORMULÁRIO PRINCIPAL -->
+                <div class="lg:col-span-1 space-y-5">
+
+                    <!-- Cabeçalho do Prontuário -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <div class="flex items-center gap-3 mb-5">
+                            <div
+                                class="w-10 h-10 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl flex items-center justify-center text-white text-lg">
+                                📋</div>
+                            <div>
+                                <h2 class="text-xl font-bold text-gray-900">Novo Prontuário</h2>
+                                <p class="text-sm text-gray-500">Preencha e envie para o paciente via WhatsApp</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Paciente *</label>
+                                <select id="pront-paciente"
+                                    class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none text-sm">
+                                    <option value="">Selecione um paciente...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Telefone do Paciente</label>
+                                <input type="tel" id="pront-telefone" placeholder="(11) 99999-9999"
+                                    class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Profissional
+                                    (Seleção)</label>
+                                <select id="pront-profissional"
+                                    class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none text-sm">
+                                    <option value="">Selecione o profissional...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Data da Consulta</label>
+                                <input type="date" id="pront-data"
+                                    class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Nome do Médico *</label>
+                                <input type="text" id="pront-medico" placeholder="Ex: Dr. João da Silva"
+                                    class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">CRM</label>
+                                <input type="text" id="pront-crm" placeholder="Ex: CRM/SP 123456"
+                                    class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none text-sm">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Campos Clínicos -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-4">
+                        <h3 class="font-bold text-gray-800 text-base flex items-center gap-2">🩺 Informações Clínicas
+                        </h3>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Queixa Principal *</label>
+                            <input type="text" id="pront-queixa" placeholder="Ex: Dor lombar há 3 dias"
+                                class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Anamnese / História da Doença
+                                Atual</label>
+                            <textarea id="pront-anamnese" rows="3"
+                                placeholder="Descreva a história clínica do paciente..."
+                                class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none text-sm resize-none"></textarea>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Pressão Arterial</label>
+                                <input type="text" id="pront-pa" placeholder="120/80"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Freq. Cardíaca</label>
+                                <input type="text" id="pront-fc" placeholder="72 bpm"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Temperatura</label>
+                                <input type="text" id="pront-temp" placeholder="36.5°C"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Peso / Altura</label>
+                                <input type="text" id="pront-peso" placeholder="70kg / 1.75m"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none text-sm">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Exame Físico</label>
+                            <textarea id="pront-exame" rows="2" placeholder="Resultados do exame físico..."
+                                class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none text-sm resize-none"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Diagnóstico e Conduta -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-4">
+                        <h3 class="font-bold text-gray-800 text-base flex items-center gap-2">💊 Diagnóstico e Conduta
+                        </h3>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Hipótese Diagnóstica /
+                                CID</label>
+                            <input type="text" id="pront-diagnostico" placeholder="Ex: Lombalgia aguda — CID M54.5"
+                                class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Medicamentos Prescritos</label>
+                            <textarea id="pront-medicamentos" rows="3"
+                                placeholder="Ex: Ibuprofeno 600mg — 1 comprimido 8/8h por 5 dias&#10;Miorrelaxante 4mg — 1 comprimido à noite por 7 dias"
+                                class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none text-sm resize-none"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Conduta / Orientações ao
+                                Paciente</label>
+                            <textarea id="pront-conduta" rows="3"
+                                placeholder="Ex: Repouso relativo por 48h, compressas quentes, fisioterapia 3x semana..."
+                                class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none text-sm resize-none"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Retorno / Próxima
+                                Consulta</label>
+                            <input type="text" id="pront-retorno"
+                                placeholder="Ex: Retorno em 15 dias ou em caso de piora"
+                                class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Observações Adicionais</label>
+                            <textarea id="pront-obs" rows="2"
+                                placeholder="Observações gerais, alergias, comorbidades relevantes..."
+                                class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none text-sm resize-none"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Botões de ação -->
+                    <div class="flex gap-3">
+                        <button onclick="salvarProntuario()"
+                            class="flex-1 px-5 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2">
+                            💾 Salvar Prontuário
+                        </button>
+                        <button onclick="enviarProntuarioWhatsApp()"
+                            class="flex-1 px-5 py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2">
+                            📲 Enviar via WhatsApp
+                        </button>
+                        <button onclick="limparProntuario()"
+                            class="px-5 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold transition-colors">
+                            🗑️ Limpar
+                        </button>
+                    </div>
+                </div>
+
+
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                    <h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2">📂 Prontuários Salvos</h3>
+                    <div id="pront-lista" class="space-y-2 max-h-64 overflow-y-auto">
+                        <p class="text-sm text-gray-400 text-center py-4">Nenhum prontuário salvo ainda.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </div>
+    </main>
+
+    <!-- ===== MODAL: Profissional ===== -->
+    <div id="profModal" class="modal-overlay hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+            <div class="flex items-center justify-between p-6 border-b">
+                <h3 id="profModalTitle" class="text-xl font-bold text-gray-900">Adicionar Profissional</h3>
+                <button onclick="closeProfModal()"
+                    class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            </div>
+            <div class="p-6 space-y-4">
+                <input type="hidden" id="profId">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nome Completo *</label>
+                    <input type="text" id="profName" placeholder="Ex: Dr. João Silva"
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Especialidade *</label>
+                    <input type="text" id="profSpecialty" placeholder="Ex: Clínico Geral"
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Horário Início</label>
+                        <input type="time" id="profStart" value="08:00"
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Horário Fim</label>
+                        <input type="time" id="profEnd" value="18:00"
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Duração da Consulta (min)</label>
+                    <select id="profDuration"
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="30">30 minutos</option>
+                        <option value="45">45 minutos</option>
+                        <option value="60" selected>60 minutos</option>
+                        <option value="90">90 minutos</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Cor do Avatar</label>
+                    <div class="flex gap-2">
+                        <button onclick="selectColor('3b82f6',this)" data-color="3b82f6"
+                            class="w-8 h-8 rounded-full bg-blue-500 border-2 border-transparent hover:scale-110 transition-transform color-btn"></button>
+                        <button onclick="selectColor('ec4899',this)" data-color="ec4899"
+                            class="w-8 h-8 rounded-full bg-pink-500 border-2 border-transparent hover:scale-110 transition-transform color-btn"></button>
+                        <button onclick="selectColor('8b5cf6',this)" data-color="8b5cf6"
+                            class="w-8 h-8 rounded-full bg-purple-500 border-2 border-transparent hover:scale-110 transition-transform color-btn"></button>
+                        <button onclick="selectColor('10b981',this)" data-color="10b981"
+                            class="w-8 h-8 rounded-full bg-emerald-500 border-2 border-transparent hover:scale-110 transition-transform color-btn"></button>
+                        <button onclick="selectColor('f59e0b',this)" data-color="f59e0b"
+                            class="w-8 h-8 rounded-full bg-amber-500 border-2 border-transparent hover:scale-110 transition-transform color-btn"></button>
+                        <button onclick="selectColor('ef4444',this)" data-color="ef4444"
+                            class="w-8 h-8 rounded-full bg-red-500 border-2 border-transparent hover:scale-110 transition-transform color-btn"></button>
+                    </div>
+                    <input type="hidden" id="profColor" value="3b82f6">
+                </div>
+            </div>
+            <div class="flex gap-3 p-6 pt-0">
+                <button onclick="closeProfModal()"
+                    class="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 font-medium">Cancelar</button>
+                <button onclick="saveProfessional()"
+                    class="flex-1 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-medium">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL: Novo Agendamento ===== -->
+    <div id="apptModal" class="modal-overlay hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+            <div class="flex items-center justify-between p-6 border-b">
+                <h3 class="text-xl font-bold text-gray-900">Novo Agendamento</h3>
+                <button onclick="closeApptModal()"
+                    class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Profissional *</label>
+                    <select id="apptProf"
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"></select>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Data *</label>
+                        <input type="date" id="apptDate"
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Horário *</label>
+                        <input type="time" id="apptTime"
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nome do Paciente *</label>
+                    <input type="text" id="apptPatient" placeholder="Ex: Maria Silva"
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Telefone *</label>
+                    <input type="tel" id="apptPhone" placeholder="(11) 99999-9999"
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                    <select id="apptType"
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option>Consulta</option>
+                        <option>Primeira Consulta</option>
+                        <option>Retorno</option>
+                        <option>Avaliação</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex gap-3 p-6 pt-0">
+                <button onclick="closeApptModal()"
+                    class="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 font-medium">Cancelar</button>
+                <button onclick="saveAppointment()"
+                    class="flex-1 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-medium">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL: Detalhes Paciente ===== -->
+    <div id="patientModal" class="modal-overlay hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div class="flex items-center justify-between p-6 border-b">
+                <h3 class="text-xl font-bold text-gray-900">Detalhes do Paciente</h3>
+                <button onclick="closePatientModal()"
+                    class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            </div>
+            <div class="p-6" id="patientModalContent"></div>
+            <div class="p-6 pt-0">
+                <button onclick="closePatientModal()"
+                    class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 font-medium">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // =========================================================
+        // AUTENTICAÇÃO JWT
+        // =========================================================
+        const TOKEN_KEY = 'agendafacil_token';
+        const CLINICA_KEY = 'agendafacil_clinica';
+
+        function getToken() {
+            return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
+        }
+
+        function isLocalDev() {
+            // Permite acesso sem login em desenvolvimento local
+            return location.protocol === 'file:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+        }
+
+        function logout() {
+            localStorage.removeItem(TOKEN_KEY);
+            localStorage.removeItem(CLINICA_KEY);
+            sessionStorage.removeItem(TOKEN_KEY);
+            window.location.href = 'login.html';
+        }
+
+        function confirmarLogout() {
+            if (confirm('Deseja sair do painel?')) logout();
+        }
+
+        // Redirecionar para login se não autenticado (exceto em dev local)
+        (function checkAuth() {
+            if (!getToken() && !isLocalDev()) {
+                window.location.href = 'login.html';
+            } else {
+                // Atualiza header com dados da clínica
+                try {
+                    const clinica = JSON.parse(localStorage.getItem(CLINICA_KEY) || '{}');
+                    if (clinica.nome) {
+                        document.getElementById('clinicNameHeader').textContent = clinica.nome;
+                        const avEl = document.getElementById('adminAvatar');
+                        if (avEl) avEl.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(clinica.nome)}&background=10b981&color=fff`;
+                    }
+                } catch (e) { }
+            }
+        })();
+
+        // =========================================================
+        // DATABASE (localStorage)
+        // =========================================================
+        const DB_KEY = 'agendafacil_db';
+
+        function loadDB() {
+            const raw = localStorage.getItem(DB_KEY);
+            if (raw) return JSON.parse(raw);
+            // Seed inicial
+            return {
+                professionals: [
+                    { id: 1, name: 'Dr. João Silva', specialty: 'Clínico Geral', color: '3b82f6', start: '08:00', end: '18:00', duration: 60 },
+                    { id: 2, name: 'Dra. Ana Costa', specialty: 'Pediatra', color: 'ec4899', start: '09:00', end: '17:00', duration: 45 },
+                    { id: 3, name: 'Dr. Carlos Mendes', specialty: 'Ortopedista', color: '8b5cf6', start: '10:00', end: '19:00', duration: 60 }
+                ],
+                appointments: [],
+                patients: [],
+                nextProfId: 4,
+                nextApptId: 1,
+                botApptCount: 0
+            };
+        }
+
+        function saveDB(db) {
+            localStorage.setItem(DB_KEY, JSON.stringify(db));
+        }
+
+        function getPhoto(name, color) {
+            return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=${color}&color=fff`;
+        }
+
+        let db = loadDB();
+        let currentWeekOffset = 0;
+        let selectedProfColor = '3b82f6';
+        let botState = { step: 0, data: {} };
+
+        // =========================================================
+        // TABS
+        // =========================================================
+        function showTab(name) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('nav button').forEach(el => el.classList.remove('tab-active'));
+            document.getElementById('content-' + name).classList.remove('hidden');
+            document.getElementById('tab-' + name).classList.add('tab-active');
+            if (name === 'dashboard') renderDashboard();
+            if (name === 'agenda') renderCalendar();
+            if (name === 'profissionais') renderProfessionals();
+            if (name === 'pacientes') renderPatients();
+            if (name === 'prontuario') initProntuario();
+        }
+
+        // =========================================================
+        // DASHBOARD
+        // =========================================================
+        function renderDashboard() {
+            db = loadDB();
+            const todayStr = new Date().toISOString().split('T')[0];
+            const weekStart = new Date(); weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+            const weekStr = weekStart.toISOString().split('T')[0];
+
+            const todayApts = db.appointments.filter(a => a.date === todayStr);
+            const weekApts = db.appointments.filter(a => a.date >= weekStr);
+
+            document.getElementById('statToday').textContent = todayApts.length;
+            document.getElementById('statWeek').textContent = weekApts.length;
+            document.getElementById('statPatients').textContent = db.patients.length;
+            document.getElementById('statProfs').textContent = db.professionals.length;
+
+            const container = document.getElementById('todayAppointments');
+            if (todayApts.length === 0) {
+                container.innerHTML = '<div class="text-center py-8 text-gray-400">Nenhum agendamento hoje.</div>';
+                return;
+            }
+            container.innerHTML = todayApts.sort((a, b) => a.time.localeCompare(b.time)).map(apt => {
+                const prof = db.professionals.find(p => p.id === apt.professionalId);
+                const statusCls = apt.status === 'confirmed' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700';
+                const statusTxt = apt.status === 'confirmed' ? 'Confirmado' : 'Pendente';
+                return `<div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+            <span class="font-bold text-gray-900 text-sm w-12 shrink-0">${apt.time}</span>
+            <img src="${getPhoto(prof?.name || '?', prof?.color || '999')}" class="w-9 h-9 rounded-full shrink-0">
+            <div class="flex-1 min-w-0">
+                <div class="font-medium text-gray-900 text-sm truncate">${apt.patient}</div>
+                <div class="text-xs text-gray-500 truncate">${prof?.name || ''} · ${apt.type}</div>
+            </div>
+            <span class="text-xs px-2 py-1 rounded-full font-medium ${statusCls} shrink-0">${statusTxt}</span>
+            <button onclick="deleteAppointment(${apt.id})" class="text-red-400 hover:text-red-600 text-sm p-1" title="Excluir">🗑️</button>
+        </div>`;
+            }).join('');
+        }
+
+        // =========================================================
+        // CALENDAR / AGENDA
+        // =========================================================
+        function changeWeek(dir) {
+            if (dir === 0) currentWeekOffset = 0;
+            else currentWeekOffset += dir;
+            renderCalendar();
+        }
+
+        function renderCalendar() {
+            db = loadDB();
+            const today = new Date();
+            const startOfWeek = new Date(today);
+            startOfWeek.setDate(today.getDate() - today.getDay() + (currentWeekOffset * 7));
+
+            const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+            const todayStr = today.toISOString().split('T')[0];
+
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(startOfWeek.getDate() + 6);
+            document.getElementById('weekRangeLabel').textContent =
+                `${startOfWeek.toLocaleDateString('pt-BR')} – ${endOfWeek.toLocaleDateString('pt-BR')}`;
+
+            let html = days.map(d => `<div class="text-center text-xs font-semibold text-gray-600 py-2">${d}</div>`).join('');
+
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(startOfWeek);
+                d.setDate(startOfWeek.getDate() + i);
+                const dStr = d.toISOString().split('T')[0];
+                const isToday = dStr === todayStr;
+                const dayApts = db.appointments.filter(a => a.date === dStr).sort((a, b) => a.time.localeCompare(b.time));
+
+                html += `<div class="calendar-day ${isToday ? 'bg-blue-50 border-blue-300' : 'bg-white'}">
+            <div class="text-sm font-bold ${isToday ? 'text-blue-600' : 'text-gray-700'} mb-1">${d.getDate()}</div>
+            ${dayApts.map(a => {
+                    const prof = db.professionals.find(p => p.id === a.professionalId);
+                    return `<div class="appointment-slot bg-blue-100 text-blue-800 cursor-pointer hover:bg-blue-200" onclick="showApptDetail(${a.id})" title="${a.patient} - ${prof?.name || ''}">
+                    ${a.time} ${a.patient.split(' ')[0]}
+                </div>`;
+                }).join('')}
+        </div>`;
+            }
+            document.getElementById('calendarGrid').innerHTML = html;
+        }
+
+        function showApptDetail(id) {
+            db = loadDB();
+            const apt = db.appointments.find(a => a.id === id);
+            if (!apt) return;
+            const prof = db.professionals.find(p => p.id === apt.professionalId);
+            const [y, m, dy] = apt.date.split('-');
+            const panel = document.getElementById('apptDetailPanel');
+            const statusCls = apt.status === 'confirmed' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700';
+            panel.classList.remove('hidden');
+            document.getElementById('apptDetailContent').innerHTML = `
+        <div class="grid grid-cols-2 gap-4 mb-4">
+            <div><p class="text-xs text-gray-500">Paciente</p><p class="font-semibold">${apt.patient}</p></div>
+            <div><p class="text-xs text-gray-500">Telefone</p><p class="font-semibold">${apt.phone || '-'}</p></div>
+            <div><p class="text-xs text-gray-500">Profissional</p><p class="font-semibold">${prof?.name || '-'}</p></div>
+            <div><p class="text-xs text-gray-500">Especialidade</p><p class="font-semibold">${prof?.specialty || '-'}</p></div>
+            <div><p class="text-xs text-gray-500">Data</p><p class="font-semibold">${dy}/${m}/${y}</p></div>
+            <div><p class="text-xs text-gray-500">Horário</p><p class="font-semibold">${apt.time}</p></div>
+            <div><p class="text-xs text-gray-500">Tipo</p><p class="font-semibold">${apt.type}</p></div>
+            <div><p class="text-xs text-gray-500">Status</p><span class="text-xs px-2 py-1 rounded-full font-medium ${statusCls}">${apt.status === 'confirmed' ? 'Confirmado' : 'Pendente'}</span></div>
+        </div>
+        ${apt.notes ? `<div class="mb-4"><p class="text-xs text-gray-500 mb-1">Observações</p><p class="text-sm bg-gray-50 p-3 rounded-lg">${apt.notes}</p></div>` : ''}
+        <div class="flex gap-2">
+            <button onclick="toggleStatus(${id})" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">
+                ${apt.status === 'confirmed' ? '⏳ Marcar Pendente' : '✅ Confirmar'}
+            </button>
+            <button onclick="deleteAppointment(${id})" class="px-4 py-2 bg-red-50 text-red-600 border border-red-200 rounded-lg text-sm hover:bg-red-100">🗑️ Excluir</button>
+        </div>`;
+            panel.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function toggleStatus(id) {
+            db = loadDB();
+            const apt = db.appointments.find(a => a.id === id);
+            if (apt) { apt.status = apt.status === 'confirmed' ? 'pending' : 'confirmed'; saveDB(db); }
+            renderCalendar(); showApptDetail(id);
+        }
+
+        function deleteAppointment(id) {
+            if (!confirm('Excluir este agendamento?')) return;
+            db = loadDB();
+            db.appointments = db.appointments.filter(a => a.id !== id);
+            saveDB(db);
+            document.getElementById('apptDetailPanel').classList.add('hidden');
+            renderCalendar(); renderDashboard();
+        }
+
+        // =========================================================
+        // PROFISSIONAIS
+        // =========================================================
+        function renderProfessionals() {
+            db = loadDB();
+            const container = document.getElementById('professionalsList');
+            if (db.professionals.length === 0) {
+                container.innerHTML = '<div class="col-span-3 text-center py-16 text-gray-400"><div class="text-5xl mb-3">👨‍⚕️</div><p>Nenhum profissional cadastrado.</p></div>';
+                return;
+            }
+            container.innerHTML = db.professionals.map(prof => {
+                const appts = db.appointments.filter(a => a.professionalId === prof.id);
+                return `<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
+            <div class="flex items-start gap-4 mb-4">
+                <img src="${getPhoto(prof.name, prof.color)}" class="w-16 h-16 rounded-full shadow-sm">
+                <div class="flex-1 min-w-0">
+                    <h3 class="font-bold text-gray-900 truncate">${prof.name}</h3>
+                    <p class="text-sm text-blue-600 font-medium">${prof.specialty}</p>
+                    <p class="text-xs text-gray-500 mt-1">⏰ ${prof.start}–${prof.end} · ⏱️ ${prof.duration}min</p>
+                    <p class="text-xs text-gray-400 mt-1">${appts.length} agendamento(s)</p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="openProfModal(${prof.id})" class="flex-1 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium">✏️ Editar</button>
+                <button onclick="deleteProfessional(${prof.id})" class="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-sm">🗑️</button>
+            </div>
+        </div>`;
+            }).join('');
+        }
+
+        function openProfModal(id) {
+            db = loadDB();
+            const modal = document.getElementById('profModal');
+            modal.classList.remove('hidden');
+            if (id) {
+                const prof = db.professionals.find(p => p.id === id);
+                document.getElementById('profModalTitle').textContent = 'Editar Profissional';
+                document.getElementById('profId').value = prof.id;
+                document.getElementById('profName').value = prof.name;
+                document.getElementById('profSpecialty').value = prof.specialty;
+                document.getElementById('profStart').value = prof.start;
+                document.getElementById('profEnd').value = prof.end;
+                document.getElementById('profDuration').value = prof.duration;
+                selectColor(prof.color);
+            } else {
+                document.getElementById('profModalTitle').textContent = 'Adicionar Profissional';
+                document.getElementById('profId').value = '';
+                document.getElementById('profName').value = '';
+                document.getElementById('profSpecialty').value = '';
+                document.getElementById('profStart').value = '08:00';
+                document.getElementById('profEnd').value = '18:00';
+                document.getElementById('profDuration').value = '60';
+                selectColor('3b82f6');
+            }
+        }
+
+        function closeProfModal() { document.getElementById('profModal').classList.add('hidden'); }
+
+        function selectColor(color, btn) {
+            selectedProfColor = color;
+            document.getElementById('profColor').value = color;
+            document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('border-gray-800', 'scale-125'));
+            if (btn) { btn.classList.add('border-gray-800', 'scale-125'); }
+            else {
+                const found = document.querySelector(`.color-btn[data-color="${color}"]`);
+                if (found) found.classList.add('border-gray-800', 'scale-125');
+            }
+        }
+
+        function saveProfessional() {
+            const name = document.getElementById('profName').value.trim();
+            const specialty = document.getElementById('profSpecialty').value.trim();
+            if (!name || !specialty) { alert('Preencha nome e especialidade.'); return; }
+            db = loadDB();
+            const existingId = parseInt(document.getElementById('profId').value);
+            const profData = {
+                name, specialty,
+                color: document.getElementById('profColor').value,
+                start: document.getElementById('profStart').value,
+                end: document.getElementById('profEnd').value,
+                duration: parseInt(document.getElementById('profDuration').value)
+            };
+            if (existingId) {
+                const idx = db.professionals.findIndex(p => p.id === existingId);
+                db.professionals[idx] = { ...db.professionals[idx], ...profData };
+            } else {
+                db.professionals.push({ id: db.nextProfId++, ...profData });
+            }
+            saveDB(db);
+            closeProfModal();
+            renderProfessionals();
+        }
+
+        function deleteProfessional(id) {
+            if (!confirm('Excluir este profissional? Os agendamentos associados também serão removidos.')) return;
+            db = loadDB();
+            db.professionals = db.professionals.filter(p => p.id !== id);
+            db.appointments = db.appointments.filter(a => a.professionalId !== id);
+            saveDB(db);
+            renderProfessionals();
+        }
+
+        // =========================================================
+        // PACIENTES
+        // =========================================================
+        function renderPatients() {
+            db = loadDB();
+            const search = (document.getElementById('patientSearch')?.value || '').toLowerCase();
+            let patients = db.patients;
+            if (search) patients = patients.filter(p => p.name.toLowerCase().includes(search) || (p.phone || '').includes(search));
+
+            const empty = document.getElementById('patientsEmpty');
+            const list = document.getElementById('patientsList');
+
+            if (patients.length === 0) {
+                list.innerHTML = '';
+                empty.classList.remove('hidden');
+                return;
+            }
+            empty.classList.add('hidden');
+            list.innerHTML = patients.map(p => {
+                const appts = db.appointments.filter(a => a.phone === p.phone);
+                const lastAppt = appts.length ? appts.sort((a, b) => b.date.localeCompare(a.date))[0] : null;
+                const [y, m, d] = lastAppt ? lastAppt.date.split('-') : [];
+                return `<tr class="hover:bg-gray-50">
+            <td class="px-6 py-3">
+                <div class="flex items-center gap-3">
+                    <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=random" class="w-9 h-9 rounded-full">
+                    <span class="font-medium text-gray-900 text-sm">${p.name}</span>
+                </div>
+            </td>
+            <td class="px-6 py-3 text-gray-600 text-sm">${p.phone || '-'}</td>
+            <td class="px-6 py-3 text-gray-600 text-sm truncate max-w-[120px]">${p.email || '-'}</td>
+            <td class="px-6 py-3 text-gray-600 text-sm">${lastAppt ? `${d}/${m}/${y}` : '-'}</td>
+            <td class="px-6 py-3 text-gray-600 text-sm">${appts.length}</td>
+            <td class="px-6 py-3">
+                <button onclick="showPatientDetail('${encodeURIComponent(p.phone)}')" class="text-blue-600 hover:text-blue-700 font-medium text-sm">Ver →</button>
+            </td>
+        </tr>`;
+            }).join('');
+        }
+
+        function showPatientDetail(encodedPhone) {
+            db = loadDB();
+            const phone = decodeURIComponent(encodedPhone);
+            const p = db.patients.find(pt => pt.phone === phone);
+            if (!p) return;
+            const appts = db.appointments.filter(a => a.phone === phone).sort((a, b) => b.date.localeCompare(a.date));
+            document.getElementById('patientModalContent').innerHTML = `
+        <div class="flex items-center gap-4 mb-5 pb-4 border-b">
+            <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=3b82f6&color=fff&size=64" class="w-16 h-16 rounded-full">
+            <div>
+                <h4 class="font-bold text-lg text-gray-900">${p.name}</h4>
+                <p class="text-sm text-gray-500">${p.phone || ''} ${p.email ? '· ' + p.email : ''}</p>
+            </div>
+        </div>
+        <h5 class="font-semibold text-gray-700 mb-2 text-sm">Histórico de Agendamentos (${appts.length})</h5>
+        ${appts.length ? appts.map(a => {
+                const prof = db.professionals.find(pr => pr.id === a.professionalId);
+                const [yr, mo, dy] = a.date.split('-');
+                return `<div class="bg-gray-50 rounded-lg p-3 mb-2 text-sm">
+                <div class="flex justify-between"><span class="font-medium">${dy}/${mo}/${yr} às ${a.time}</span><span class="${a.status === 'confirmed' ? 'text-green-600' : 'text-orange-600'} text-xs font-medium">${a.status === 'confirmed' ? 'Confirmado' : 'Pendente'}</span></div>
+                <div class="text-gray-500 text-xs mt-1">${prof?.name || '?'} · ${a.type}</div>
+            </div>`;
+            }).join('') : '<p class="text-gray-400 text-sm">Sem agendamentos.</p>'}`;
+            document.getElementById('patientModal').classList.remove('hidden');
+        }
+
+        function closePatientModal() { document.getElementById('patientModal').classList.add('hidden'); }
+
+        // =========================================================
+        // MODAL: NOVO AGENDAMENTO
+        // =========================================================
+        function openNewAppointmentModal() {
+            db = loadDB();
+            const select = document.getElementById('apptProf');
+            select.innerHTML = db.professionals.map(p => `<option value="${p.id}">${p.name} – ${p.specialty}</option>`).join('');
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('apptDate').value = today;
+            document.getElementById('apptDate').min = today;
+            document.getElementById('apptTime').value = '09:00';
+            document.getElementById('apptPatient').value = '';
+            document.getElementById('apptPhone').value = '';
+            document.getElementById('apptModal').classList.remove('hidden');
+        }
+
+        function closeApptModal() { document.getElementById('apptModal').classList.add('hidden'); }
+
+        function saveAppointment() {
+            const profId = parseInt(document.getElementById('apptProf').value);
+            const date = document.getElementById('apptDate').value;
+            const time = document.getElementById('apptTime').value;
+            const patient = document.getElementById('apptPatient').value.trim();
+            const phone = document.getElementById('apptPhone').value.trim();
+            const type = document.getElementById('apptType').value;
+            if (!profId || !date || !time || !patient) { alert('Preencha todos os campos obrigatórios.'); return; }
+            db = loadDB();
+            db.appointments.push({ id: db.nextApptId++, professionalId: profId, patient, phone, date, time, type, status: 'confirmed', notes: '' });
+            upsertPatient(patient, phone, '');
+            saveDB(db);
+            closeApptModal();
+            renderDashboard();
+            alert('Agendamento criado com sucesso!');
+        }
+
+        function upsertPatient(name, phone, email) {
+            const existing = db.patients.find(p => p.phone === phone);
+            if (!existing && phone) db.patients.push({ name, phone, email });
+        }
+
+        // =========================================================
+        // PRONTUÁRIO
+        // =========================================================
+        function initProntuario() {
+            db = loadDB();
+            // Populando selects
+            const selPac = document.getElementById('pront-paciente');
+            selPac.innerHTML = '<option value="">Selecione um paciente...</option>';
+            db.patients.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.phone;
+                opt.textContent = p.name;
+                opt.dataset.phone = p.phone;
+                selPac.appendChild(opt);
+            });
+            selPac.onchange = function () {
+                const p = db.patients.find(x => x.phone === this.value);
+                if (p) document.getElementById('pront-telefone').value = p.phone;
+            };
+
+            const selProf = document.getElementById('pront-profissional');
+            selProf.innerHTML = '<option value="">Selecione o profissional...</option>';
+            db.professionals.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.name;
+                opt.textContent = `${p.name} — ${p.specialty}`;
+                selProf.appendChild(opt);
+            });
+
+            // Data padrão = hoje
+            document.getElementById('pront-data').value = new Date().toISOString().split('T')[0];
+
+            renderProntuariosSalvos();
+        }
+
+        function gerarTextoProntuario() {
+            const pac = document.getElementById('pront-paciente');
+            const nomePac = pac.options[pac.selectedIndex]?.text || '';
+            const data = document.getElementById('pront-data').value;
+            const [y, m, d] = data ? data.split('-') : ['', '', ''];
+            const dataFmt = data ? `${d}/${m}/${y}` : '';
+            const prof = document.getElementById('pront-profissional').value;
+            const medico = document.getElementById('pront-medico').value;
+            const crm = document.getElementById('pront-crm').value;
+            const queixa = document.getElementById('pront-queixa').value;
+            const anamnese = document.getElementById('pront-anamnese').value;
+            const pa = document.getElementById('pront-pa').value;
+            const fc = document.getElementById('pront-fc').value;
+            const temp = document.getElementById('pront-temp').value;
+            const peso = document.getElementById('pront-peso').value;
+            const exame = document.getElementById('pront-exame').value;
+            const diag = document.getElementById('pront-diagnostico').value;
+            const meds = document.getElementById('pront-medicamentos').value;
+            const conduta = document.getElementById('pront-conduta').value;
+            const retorno = document.getElementById('pront-retorno').value;
+            const obs = document.getElementById('pront-obs').value;
+
+            const clinica = document.getElementById('clinicNameHeader')?.textContent || 'Clínica';
+
+            let txt = `📋 *PRONTUÁRIO MÉDICO*\n`;
+            txt += `🏥 ${clinica}\n`;
+            txt += `📅 Data: ${dataFmt}\n`;
+            if (nomePac) txt += `👤 Paciente: ${nomePac}\n`;
+            if (prof) txt += `👨‍⚕️ Profissional: ${prof}\n`;
+            txt += `\n━━━━━━━━━━━━━━━━━━━━━━\n`;
+            if (queixa) txt += `\n*📌 QUEIXA PRINCIPAL*\n${queixa}\n`;
+            if (anamnese) txt += `\n*📖 ANAMNESE*\n${anamnese}\n`;
+            if (pa || fc || temp || peso) {
+                txt += `\n*🩺 SINAIS VITAIS*\n`;
+                if (pa) txt += `• PA: ${pa}\n`;
+                if (fc) txt += `• FC: ${fc}\n`;
+                if (temp) txt += `• Temp: ${temp}\n`;
+                if (peso) txt += `• Peso/Altura: ${peso}\n`;
+            }
+            if (exame) txt += `\n*🔬 EXAME FÍSICO*\n${exame}\n`;
+            if (diag) txt += `\n*🎯 DIAGNÓSTICO*\n${diag}\n`;
+            if (meds) txt += `\n*💊 MEDICAMENTOS PRESCRITOS*\n${meds}\n`;
+            if (conduta) txt += `\n*📝 CONDUTA / ORIENTAÇÕES*\n${conduta}\n`;
+            if (retorno) txt += `\n*🔄 RETORNO*\n${retorno}\n`;
+            if (obs) txt += `\n*💬 OBSERVAÇÕES*\n${obs}\n`;
+            txt += `\n━━━━━━━━━━━━━━━━━━━━━━\n`;
+            txt += `_Este prontuário foi gerado pelo sistema AgendaFácil._`;
+            return txt;
+        }
+
+        // URL do Webhook n8n — configure com a URL do seu n8n
+        const N8N_WEBHOOK_URL = 'http://localhost:5678/webhook/prontuario';
+
+        async function enviarProntuarioWhatsApp() {
+            const telefone = document.getElementById('pront-telefone').value.replace(/\D/g, '');
+            if (!telefone) { alert('Informe o telefone do paciente para enviar via WhatsApp.'); return; }
+            const queixa = document.getElementById('pront-queixa').value;
+            if (!queixa) { alert('Preencha pelo menos a Queixa Principal.'); return; }
+
+            const pac = document.getElementById('pront-paciente');
+            const dados = {
+                telefone,
+                paciente: pac.options[pac.selectedIndex]?.text || '',
+                profissional: document.getElementById('pront-profissional').value,
+                medico: document.getElementById('pront-medico').value,
+                crm: document.getElementById('pront-crm').value,
+                data: (() => { const d = document.getElementById('pront-data').value; if (!d) return ''; const [y, m, dd] = d.split('-'); return `${dd}/${m}/${y}`; })(),
+                queixa,
+                anamnese: document.getElementById('pront-anamnese').value,
+                pa: document.getElementById('pront-pa').value,
+                fc: document.getElementById('pront-fc').value,
+                temp: document.getElementById('pront-temp').value,
+                peso: document.getElementById('pront-peso').value,
+                exame: document.getElementById('pront-exame').value,
+                diagnostico: document.getElementById('pront-diagnostico').value,
+                medicamentos: document.getElementById('pront-medicamentos').value,
+                conduta: document.getElementById('pront-conduta').value,
+                retorno: document.getElementById('pront-retorno').value,
+                obs: document.getElementById('pront-obs').value,
+                clinica: document.getElementById('clinicNameHeader')?.textContent || 'Clínica'
+            };
+
+            try {
+                const btn = document.querySelector('[onclick="enviarProntuarioWhatsApp()"]');
+                if (btn) { btn.textContent = '⏳ Enviando...'; btn.disabled = true; }
+
+                const resp = await fetch(N8N_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dados)
+                });
+                if (resp.ok) {
+                    if (btn) { btn.innerHTML = '✅ Enviado!'; setTimeout(() => { btn.innerHTML = '📲 Enviar via WhatsApp'; btn.disabled = false; }, 3000); }
+                    alert('✅ Prontuário enviado ao paciente via WhatsApp pelo n8n!');
+                } else {
+                    throw new Error('Webhook retornou erro: ' + resp.status);
+                }
+            } catch (e) {
+                console.warn('n8n não acessível, abrindo WhatsApp direto:', e.message);
+                const btn = document.querySelector('[onclick="enviarProntuarioWhatsApp()"]');
+                if (btn) { btn.innerHTML = '📲 Enviar via WhatsApp'; btn.disabled = false; }
+                // Fallback: abre WhatsApp diretamente
+                const texto = gerarTextoProntuario();
+                window.open(`https://wa.me/55${telefone}?text=${encodeURIComponent(texto)}`, '_blank');
+            }
+        }
+
+        function salvarProntuario() {
+            const queixa = document.getElementById('pront-queixa').value;
+            if (!queixa) { alert('Preencha pelo menos a Queixa Principal para salvar.'); return; }
+
+            // --- Coleta dos dados ---
+            db = loadDB();
+            if (!db.prontuarios) db.prontuarios = [];
+            const pac = document.getElementById('pront-paciente');
+            const nomePac = pac.options[pac.selectedIndex]?.text || 'Paciente não identificado';
+            const data = document.getElementById('pront-data').value;
+            const [y, m, d] = data ? data.split('-') : ['', '', ''];
+            const dataFmt = data ? `${d}/${m}/${y}` : '';
+
+            const prof = document.getElementById('pront-profissional').value;
+            const medico = document.getElementById('pront-medico').value;
+            const crm = document.getElementById('pront-crm').value;
+            const anamnese = document.getElementById('pront-anamnese').value;
+            const pa = document.getElementById('pront-pa').value;
+            const fc = document.getElementById('pront-fc').value;
+            const temp = document.getElementById('pront-temp').value;
+            const peso = document.getElementById('pront-peso').value;
+            const exame = document.getElementById('pront-exame').value;
+            const diag = document.getElementById('pront-diagnostico').value;
+            const meds = document.getElementById('pront-medicamentos').value;
+            const conduta = document.getElementById('pront-conduta').value;
+            const retorno = document.getElementById('pront-retorno').value;
+            const obs = document.getElementById('pront-obs').value;
+            const clinica = document.getElementById('clinicNameHeader')?.textContent || 'Clínica';
+
+            // --- Salva no localStorage ---
+            db.prontuarios.push({
+                id: Date.now(), paciente: nomePac, data, queixa,
+                texto: gerarTextoProntuario(), criadoEm: new Date().toISOString()
+            });
+            saveDB(db);
+            renderProntuariosSalvos();
+
+            // --- Gera janela PDF ---
+            function row(label, value) {
+                return value
+                    ? `<tr><td class="label">${label}</td><td class="value">${value.replace(/\n/g, '<br>')}</td></tr>`
+                    : '';
+            }
+            function section(icon, title, content) {
+                return content
+                    ? `<div class="section"><div class="section-title">${icon} ${title}</div><div class="section-body">${content}</div></div>`
+                    : '';
+            }
+
+            const vitaisRows = [
+                pa ? `<div class="vital"><span class="vital-label">Pressão Arterial</span><span class="vital-value">${pa}</span></div>` : '',
+                fc ? `<div class="vital"><span class="vital-label">Freq. Cardíaca</span><span class="vital-value">${fc}</span></div>` : '',
+                temp ? `<div class="vital"><span class="vital-label">Temperatura</span><span class="vital-value">${temp}</span></div>` : '',
+                peso ? `<div class="vital"><span class="vital-label">Peso / Altura</span><span class="vital-value">${peso}</span></div>` : '',
+            ].filter(Boolean).join('');
+
+            const medsHtml = meds ? meds.split('\n').filter(l => l.trim()).map(l => `<li>${l.trim()}</li>`).join('') : '';
+            const condutaHtml = conduta ? conduta.split('\n').filter(l => l.trim()).map(l => `<li>${l.trim()}</li>`).join('') : '';
+
+            const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Prontuário – ${nomePac}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #1a202c; background:#fff; }
+  .page { max-width: 800px; margin: 0 auto; padding: 32px 40px; }
+
+  /* Cabeçalho */
+  .header { display:flex; justify-content:space-between; align-items:flex-start; padding-bottom:16px; border-bottom:3px solid #0d9488; margin-bottom:20px; }
+  .header-left h1 { font-size:22px; color:#0d9488; font-weight:700; margin-bottom:2px; }
+  .header-left p  { font-size:11px; color:#64748b; }
+  .header-right   { text-align:right; }
+  .header-right .badge { background:#0d9488; color:#fff; padding:4px 14px; border-radius:20px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
+  .header-right .date  { font-size:11px; color:#64748b; margin-top:6px; }
+
+  /* Info do Paciente */
+  .patient-bar { background:#f0fdfa; border:1px solid #99f6e4; border-radius:8px; padding:12px 16px; display:flex; gap:32px; margin-bottom:18px; }
+  .patient-bar .field label { font-size:9px; color:#0d9488; text-transform:uppercase; font-weight:700; letter-spacing:.5px; display:block; margin-bottom:2px; }
+  .patient-bar .field span  { font-size:12px; font-weight:600; color:#1a202c; }
+
+  /* Sinais vitais */
+  .vitals { display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap; }
+  .vital  { flex:1; min-width:120px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; text-align:center; }
+  .vital-label { display:block; font-size:9px; color:#64748b; text-transform:uppercase; font-weight:600; letter-spacing:.4px; margin-bottom:4px; }
+  .vital-value { display:block; font-size:14px; font-weight:700; color:#0d9488; }
+
+  /* Seções */
+  .section { margin-bottom:14px; border-radius:8px; overflow:hidden; border:1px solid #e2e8f0; }
+  .section-title { background:#f8fafc; padding:8px 14px; font-size:11px; font-weight:700; color:#374151; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; gap:6px; }
+  .section-body  { padding:10px 14px; font-size:12px; line-height:1.6; color:#374151; white-space:pre-wrap; }
+  .section-body ul { padding-left:16px; }
+  .section-body ul li { margin-bottom:4px; }
+
+  /* Diagnóstico destaque */
+  .section.diag .section-title { background:#eff6ff; border-color:#bfdbfe; color:#1e40af; }
+  .section.diag .section-body  { background:#f8fbff; font-weight:600; font-size:13px; color:#1e40af; }
+
+  /* Medicamentos */
+  .section.meds .section-title { background:#fef3c7; border-color:#fde68a; color:#92400e; }
+
+  /* Rodapé */
+  .footer { margin-top:28px; padding-top:12px; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:flex-end; }
+  .footer .assinatura { border-top:1px solid #374151; padding-top:4px; text-align:center; width:220px; font-size:10px; color:#64748b; }
+  .footer .sistema { font-size:9px; color:#94a3b8; }
+
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .page { padding: 20px 24px; }
+    @page { margin: 10mm; size: A4; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div class="header-left">
+      <h1>📋 Prontuário Médico</h1>
+      <p>${clinica}</p>
+    </div>
+    <div class="header-right">
+      <div class="badge">Confidencial</div>
+      <div class="date">Emitido em ${new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+    </div>
+  </div>
+
+  <div class="patient-bar">
+    <div class="field"><label>Paciente</label><span>${nomePac}</span></div>
+    ${medico ? `<div class="field"><label>Médico</label><span>${medico}${crm ? ' &nbsp;|&nbsp; ' + crm : ''}</span></div>` : prof ? `<div class="field"><label>Profissional</label><span>${prof}</span></div>` : ''}
+    ${dataFmt ? `<div class="field"><label>Data da Consulta</label><span>${dataFmt}</span></div>` : ''}
+  </div>
+
+  ${vitaisRows ? `<div class="vitals">${vitaisRows}</div>` : ''}
+
+  ${section('📌', 'Queixa Principal', queixa)}
+  ${section('📖', 'Anamnese / História da Doença Atual', anamnese)}
+  ${section('🔬', 'Exame Físico', exame)}
+
+  ${diag ? `<div class="section diag"><div class="section-title">🎯 Hipótese Diagnóstica / CID</div><div class="section-body">${diag}</div></div>` : ''}
+
+  ${meds ? `<div class="section meds"><div class="section-title">💊 Medicamentos Prescritos</div><div class="section-body"><ul>${medsHtml}</ul></div></div>` : ''}
+
+  ${conduta ? `<div class="section"><div class="section-title">📝 Conduta / Orientações ao Paciente</div><div class="section-body"><ul>${condutaHtml}</ul></div></div>` : ''}
+
+  ${section('🔄', 'Retorno / Próxima Consulta', retorno)}
+  ${section('💬', 'Observações Adicionais', obs)}
+
+  <div class="footer">
+    <div class="assinatura">
+      <br>${medico || prof || 'Profissional de Saúde'}${crm ? '<br><span style="font-size:9px;color:#64748b">' + crm + '</span>' : ''}<br>Ass. e Carimbo
+    </div>
+    <div class="sistema">Gerado pelo AgendaFácil · ${new Date().toLocaleString('pt-BR')}</div>
+  </div>
+
+</div>
+<script>window.onload = () => { window.print(); }<\/script>
+</body>
+</html>`;
+
+            const win = window.open('', '_blank', 'width=900,height=700');
+            win.document.write(html);
+            win.document.close();
+        }
+
+        function renderProntuariosSalvos() {
+            db = loadDB();
+            const lista = document.getElementById('pront-lista');
+            const pronts = db.prontuarios || [];
+            if (pronts.length === 0) {
+                lista.innerHTML = '<p class="text-sm text-gray-400 text-center py-4">Nenhum prontuário salvo ainda.</p>';
+                return;
+            }
+            lista.innerHTML = pronts.slice().reverse().map(p => {
+                const [y, m, d] = p.data ? p.data.split('-') : ['', '', ''];
+                const dataFmt = p.data ? `${d}/${m}/${y}` : '';
+                return `<div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="text-sm font-semibold text-gray-800 truncate">${p.paciente}</p>
+                            <p class="text-xs text-gray-500">${dataFmt} · ${p.queixa.substring(0, 40)}${p.queixa.length > 40 ? '...' : ''}</p>
+                        </div>
+                        <button onclick="excluirProntuario(${p.id})" class="text-red-400 hover:text-red-600 text-xs shrink-0">🗑️</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function excluirProntuario(id) {
+            if (!confirm('Excluir este prontuário?')) return;
+            db = loadDB();
+            db.prontuarios = (db.prontuarios || []).filter(p => p.id !== id);
+            saveDB(db);
+            renderProntuariosSalvos();
+        }
+
+        function limparProntuario() {
+            if (!confirm('Limpar todos os campos?')) return;
+            ['pront-paciente', 'pront-telefone', 'pront-profissional', 'pront-medico', 'pront-crm', 'pront-queixa', 'pront-anamnese', 'pront-pa', 'pront-fc', 'pront-temp', 'pront-peso', 'pront-exame', 'pront-diagnostico', 'pront-medicamentos', 'pront-conduta', 'pront-retorno', 'pront-obs'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            document.getElementById('pront-data').value = new Date().toISOString().split('T')[0];
+        }
+
+        // =========================================================
+        // INIT
+        // =========================================================
+        document.addEventListener('DOMContentLoaded', () => {
+            renderDashboard();
+            // Close modals on overlay click
+            ['profModal', 'apptModal', 'patientModal'].forEach(id => {
+                document.getElementById(id).addEventListener('click', function (e) {
+                    if (e.target === this) this.classList.add('hidden');
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>
