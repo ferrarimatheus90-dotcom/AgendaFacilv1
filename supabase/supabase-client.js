@@ -3,30 +3,33 @@
 // Substitui localStorage e Google Sheets por Supabase
 // ============================================================
 
+const SUPABASE_URL = 'https://rlzisapzzohpdxcvsqyp.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_lChC8L_2OkrDvG_fStpOzA_mPI884FN';
+
 const SupabaseDB = (() => {
 
     // ──────────────────────────────────────────────────────
     // CONFIGURAÇÃO
-    // Após criar seu projeto no Supabase, preencha abaixo:
     // ──────────────────────────────────────────────────────
-    const SUPABASE_URL = 'https://rlzisapzzohpdxcvsqyp.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_lChC8L_2OkrDvG_fStpOzA_mPI884FN';
 
-    // ID da clínica (para multi-tenant) — será preenchido automaticamente no login
-    let CLINICA_ID = localStorage.getItem('agendafacil_clinica_id') || '00000000-0000-0000-0000-000000000001';
+    // ID da clínica não é mais fixo! Agora o Supabase extrai direto do JWT seguro (auth.uid())
+    let CLINICA_ID = localStorage.getItem('sb-user-id');
 
     // ──────────────────────────────────────────────────────
     // CLIENTE HTTP SIMPLES (sem dependência do SDK)
     // ──────────────────────────────────────────────────────
-    const headers = {
-        'Content-Type': 'application/json',
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        'Prefer': 'return=representation'
-    };
+    function getHeaders() {
+        const token = localStorage.getItem('sb-access-token') || sessionStorage.getItem('sb-access-token');
+        return {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': token ? `Bearer ${token}` : `Bearer ${SUPABASE_ANON_KEY}`,
+            'Prefer': 'return=representation'
+        };
+    }
 
     async function query(table, params = '') {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}${params}`, { headers });
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}${params}`, { headers: getHeaders() });
         if (!res.ok) throw new Error(`Erro ao buscar ${table}: ${res.status}`);
         return res.json();
     }
@@ -34,7 +37,7 @@ const SupabaseDB = (() => {
     async function insert(table, data) {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
             method: 'POST',
-            headers,
+            headers: getHeaders(),
             body: JSON.stringify(data)
         });
         if (!res.ok) {
@@ -47,7 +50,7 @@ const SupabaseDB = (() => {
     async function update(table, id, data) {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
             method: 'PATCH',
-            headers,
+            headers: getHeaders(),
             body: JSON.stringify(data)
         });
         if (!res.ok) throw new Error(`Erro ao atualizar ${table}: ${res.status}`);
@@ -57,7 +60,7 @@ const SupabaseDB = (() => {
     async function remove(table, id) {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
             method: 'DELETE',
-            headers
+            headers: getHeaders()
         });
         if (!res.ok) throw new Error(`Erro ao excluir de ${table}: ${res.status}`);
         return true;
