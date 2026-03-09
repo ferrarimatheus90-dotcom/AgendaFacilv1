@@ -323,9 +323,10 @@
         </div>
     </footer>
 
-    <script src="google-sheets/api-sheets.js"></script>
+    <script src="supabase/supabase-client.js"></script>
     <script>
-        function getPhoto(name, color) {
+        function getPhoto(name, color, photoUrl) {
+            if (photoUrl && photoUrl.trim()) return photoUrl.trim();
             return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=${color}&color=fff`;
         }
 
@@ -381,8 +382,7 @@
             noMsg.classList.add('hidden');
 
             try {
-                const profissionais = await SheetsAPI.list('profissionais');
-                const ativos = profissionais.filter(p => p.ativo === true || String(p.ativo).toLowerCase() === 'true');
+                const ativos = await SupabaseDB.listarProfissionais(true);
 
                 if (ativos.length === 0) {
                     grid.innerHTML = '';
@@ -393,11 +393,11 @@
                 window._profissionaisData = ativos;
                 grid.innerHTML = ativos.map(prof => `
         <div class="professional-card border-2 border-gray-100 rounded-xl p-4 flex items-center gap-4" onclick="selectProfessional(${prof.id}, this)">
-            <img src="${getPhoto(prof.name, prof.cor || '3b82f6')}" class="w-14 h-14 rounded-full border border-gray-100" alt="${prof.name}">
+            <img src="${getPhoto(prof.nome, prof.cor || '3b82f6', prof.foto_url)}" class="w-14 h-14 rounded-full border border-gray-100 object-cover" alt="${prof.nome}">
             <div class="flex-1 min-w-0">
-                <h3 class="font-bold text-gray-900 truncate">${prof.name}</h3>
+                <h3 class="font-bold text-gray-900 truncate">${prof.nome}</h3>
                 <p class="text-blue-600 text-sm font-medium">${prof.especialidade}</p>
-                <p class="text-xs text-gray-400 mt-1">⏰ ${prof.inicio}–${prof.fim} · ⏱️ ${prof.duracao}min</p>
+                <p class="text-xs text-gray-400 mt-1">⏰ ${prof.horario_inicio}–${prof.horario_fim} · ⏱️ ${prof.duracao_consulta}min</p>
             </div>
             <div class="w-6 h-6 rounded-full border-2 border-gray-200 flex items-center justify-center check-circle transition-all shrink-0">
                 <div class="w-3 h-3 rounded-full bg-blue-500 opacity-0 inner-circle transition-opacity"></div>
@@ -421,10 +421,10 @@
             document.getElementById('btnNext1').disabled = false;
 
             const prof = window._profissionaisData.find(p => p.id == id);
-            document.getElementById('selectedProfImage').src = getPhoto(prof.name, prof.cor || '3b82f6');
-            document.getElementById('selectedProfName').textContent = prof.name;
+            document.getElementById('selectedProfImage').src = getPhoto(prof.nome, prof.cor || '3b82f6', prof.foto_url);
+            document.getElementById('selectedProfName').textContent = prof.nome;
             document.getElementById('selectedProfSpec').textContent = prof.especialidade;
-            document.getElementById('summaryProf').textContent = `${prof.name} – ${prof.especialidade}`;
+            document.getElementById('summaryProf').textContent = `${prof.nome} – ${prof.especialidade}`;
 
             // Reset date/time when prof changes
             selectedDate = null; selectedTime = null;
@@ -446,7 +446,7 @@
             grid.innerHTML = '<div class="col-span-3 text-center py-6"><div class="inline-block animate-spin rounded-full h-7 w-7 border-4 border-gray-200 border-t-blue-500"></div></div>';
 
             try {
-                const res = await SheetsAPI.horariosDisponiveis(selectedProfId, selectedDate);
+                const res = await SupabaseDB.horariosDisponiveis(selectedProfId, selectedDate);
                 const slots = res.slots;
 
                 if (slots.length === 0) {
@@ -521,7 +521,7 @@
             const prof = window._profissionaisData.find(p => p.id == selectedProfId);
 
             try {
-                await SheetsAPI.agendar({
+                await SupabaseDB.criarAgendamento({
                     profissional_id: selectedProfId,
                     paciente_nome: name,
                     telefone: phone,
@@ -529,12 +529,12 @@
                     data: selectedDate,
                     horario: selectedTime,
                     tipo: 'Consulta',
-                    obs: notes
+                    observacoes: notes
                 });
 
                 // Show success
                 document.getElementById('finalName').textContent = name;
-                document.getElementById('finalProf').textContent = prof?.name || '';
+                document.getElementById('finalProf').textContent = prof?.nome || '';
                 const [y, m, d] = selectedDate.split('-');
                 document.getElementById('finalDate').textContent = `${d}/${m}/${y}`;
                 document.getElementById('finalTime').textContent = selectedTime;

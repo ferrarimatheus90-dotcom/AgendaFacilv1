@@ -495,6 +495,18 @@
                     </select>
                 </div>
                 <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">📸 Foto do Profissional (URL)</label>
+                    <input type="url" id="profPhoto" placeholder="https://exemplo.com/foto-do-medico.jpg"
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    <p class="text-xs text-gray-400 mt-1">Cole a URL de uma foto. Se vazio, será gerado um avatar com as
+                        iniciais.</p>
+                    <div id="profPhotoPreview" class="mt-2 hidden">
+                        <img id="profPhotoPreviewImg" src=""
+                            class="w-16 h-16 rounded-full object-cover border-2 border-gray-200 shadow-sm"
+                            alt="Preview">
+                    </div>
+                </div>
+                <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Cor do Avatar</label>
                     <div class="flex gap-2">
                         <button onclick="selectColor('3b82f6',this)" data-color="3b82f6"
@@ -511,6 +523,7 @@
                             class="w-8 h-8 rounded-full bg-red-500 border-2 border-transparent hover:scale-110 transition-transform color-btn"></button>
                     </div>
                     <input type="hidden" id="profColor" value="3b82f6">
+                    <p class="text-xs text-gray-400 mt-1">Cor usada quando não há foto definida.</p>
                 </div>
             </div>
             <div class="flex gap-3 p-6 pt-0">
@@ -594,6 +607,7 @@
         </div>
     </div>
 
+    <script src="supabase/supabase-client.js"></script>
     <script>
         // =========================================================
         // AUTENTICAÇÃO JWT
@@ -639,40 +653,33 @@
         })();
 
         // =========================================================
-        // DATABASE (localStorage)
+        // DATABASE (Supabase via REST API)
         // =========================================================
-        const DB_KEY = 'agendafacil_db';
-
-        function loadDB() {
-            const raw = localStorage.getItem(DB_KEY);
-            if (raw) return JSON.parse(raw);
-            // Seed inicial
-            return {
-                professionals: [
-                    { id: 1, name: 'Dr. João Silva', specialty: 'Clínico Geral', color: '3b82f6', start: '08:00', end: '18:00', duration: 60 },
-                    { id: 2, name: 'Dra. Ana Costa', specialty: 'Pediatra', color: 'ec4899', start: '09:00', end: '17:00', duration: 45 },
-                    { id: 3, name: 'Dr. Carlos Mendes', specialty: 'Ortopedista', color: '8b5cf6', start: '10:00', end: '19:00', duration: 60 }
-                ],
-                appointments: [],
-                patients: [],
-                nextProfId: 4,
-                nextApptId: 1,
-                botApptCount: 0
-            };
-        }
-
-        function saveDB(db) {
-            localStorage.setItem(DB_KEY, JSON.stringify(db));
-        }
-
-        function getPhoto(name, color) {
+        function getPhoto(name, color, photoUrl) {
+            if (photoUrl && photoUrl.trim()) return photoUrl.trim();
             return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=${color}&color=fff`;
         }
 
-        let db = loadDB();
         let currentWeekOffset = 0;
         let selectedProfColor = '3b82f6';
-        let botState = { step: 0, data: {} };
+
+        // Cache local para evitar chamadas repetidas
+        let _cache = { profissionais: [], pacientes: [], agendamentos: [] };
+
+        async function refreshCache() {
+            try {
+                const [profs, pacs, agds] = await Promise.all([
+                    SupabaseDB.listarProfissionais(),
+                    SupabaseDB.listarPacientes(),
+                    SupabaseDB.listarAgendamentos()
+                ]);
+                _cache.profissionais = profs;
+                _cache.pacientes = pacs;
+                _cache.agendamentos = agds;
+            } catch (e) {
+                console.error('Erro ao carregar dados:', e);
+            }
+        }
 
         // =========================================================
         // TABS
@@ -692,35 +699,36 @@
         // =========================================================
         // DASHBOARD
         // =========================================================
-        function renderDashboard() {
-            db = loadDB();
+        async function renderDashboard() {
+            await refreshCache();
             const todayStr = new Date().toISOString().split('T')[0];
             const weekStart = new Date(); weekStart.setDate(weekStart.getDate() - weekStart.getDay());
             const weekStr = weekStart.toISOString().split('T')[0];
 
-            const todayApts = db.appointments.filter(a => a.date === todayStr);
-            const weekApts = db.appointments.filter(a => a.date >= weekStr);
+            const todayApts = _cache.agendamentos.filter(a => a.data === todayStr);
+            const weekApts = _cache.agendamentos.filter(a => a.data >= weekStr);
 
             document.getElementById('statToday').textContent = todayApts.length;
             document.getElementById('statWeek').textContent = weekApts.length;
-            document.getElementById('statPatients').textContent = db.patients.length;
-            document.getElementById('statProfs').textContent = db.professionals.length;
+            document.getElementById('statPatients').textContent = _cache.pacientes.length;
+            document.getElementById('statProfs').textContent = _cache.profissionais.filter(p => p.ativo).length;
 
             const container = document.getElementById('todayAppointments');
             if (todayApts.length === 0) {
                 container.innerHTML = '<div class="text-center py-8 text-gray-400">Nenhum agendamento hoje.</div>';
                 return;
             }
-            container.innerHTML = todayApts.sort((a, b) => a.time.localeCompare(b.time)).map(apt => {
-                const prof = db.professionals.find(p => p.id === apt.professionalId);
+            container.innerHTML = todayApts.sort((a, b) => a.horario.localeCompare(b.horario)).map(apt => {
+                const prof = _cache.profissionais.find(p => p.id === apt.profissional_id);
+                const time = apt.horario ? apt.horario.substring(0, 5) : '';
                 const statusCls = apt.status === 'confirmed' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700';
                 const statusTxt = apt.status === 'confirmed' ? 'Confirmado' : 'Pendente';
                 return `<div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-            <span class="font-bold text-gray-900 text-sm w-12 shrink-0">${apt.time}</span>
-            <img src="${getPhoto(prof?.name || '?', prof?.color || '999')}" class="w-9 h-9 rounded-full shrink-0">
+            <span class="font-bold text-gray-900 text-sm w-12 shrink-0">${time}</span>
+            <img src="${getPhoto(prof?.nome || '?', prof?.cor || '999', prof?.foto_url)}" class="w-9 h-9 rounded-full shrink-0 object-cover">
             <div class="flex-1 min-w-0">
-                <div class="font-medium text-gray-900 text-sm truncate">${apt.patient}</div>
-                <div class="text-xs text-gray-500 truncate">${prof?.name || ''} · ${apt.type}</div>
+                <div class="font-medium text-gray-900 text-sm truncate">${apt.paciente_nome}</div>
+                <div class="text-xs text-gray-500 truncate">${prof?.nome || ''} · ${apt.tipo}</div>
             </div>
             <span class="text-xs px-2 py-1 rounded-full font-medium ${statusCls} shrink-0">${statusTxt}</span>
             <button onclick="deleteAppointment(${apt.id})" class="text-red-400 hover:text-red-600 text-sm p-1" title="Excluir">🗑️</button>
@@ -737,8 +745,8 @@
             renderCalendar();
         }
 
-        function renderCalendar() {
-            db = loadDB();
+        async function renderCalendar() {
+            await refreshCache();
             const today = new Date();
             const startOfWeek = new Date(today);
             startOfWeek.setDate(today.getDate() - today.getDay() + (currentWeekOffset * 7));
@@ -758,14 +766,15 @@
                 d.setDate(startOfWeek.getDate() + i);
                 const dStr = d.toISOString().split('T')[0];
                 const isToday = dStr === todayStr;
-                const dayApts = db.appointments.filter(a => a.date === dStr).sort((a, b) => a.time.localeCompare(b.time));
+                const dayApts = _cache.agendamentos.filter(a => a.data === dStr).sort((a, b) => a.horario.localeCompare(b.horario));
 
                 html += `<div class="calendar-day ${isToday ? 'bg-blue-50 border-blue-300' : 'bg-white'}">
             <div class="text-sm font-bold ${isToday ? 'text-blue-600' : 'text-gray-700'} mb-1">${d.getDate()}</div>
             ${dayApts.map(a => {
-                    const prof = db.professionals.find(p => p.id === a.professionalId);
-                    return `<div class="appointment-slot bg-blue-100 text-blue-800 cursor-pointer hover:bg-blue-200" onclick="showApptDetail(${a.id})" title="${a.patient} - ${prof?.name || ''}">
-                    ${a.time} ${a.patient.split(' ')[0]}
+                    const prof = _cache.profissionais.find(p => p.id === a.profissional_id);
+                    const time = a.horario ? a.horario.substring(0, 5) : '';
+                    return `<div class="appointment-slot bg-blue-100 text-blue-800 cursor-pointer hover:bg-blue-200" onclick="showApptDetail(${a.id})" title="${a.paciente_nome} - ${prof?.nome || ''}">
+                    ${time} ${a.paciente_nome.split(' ')[0]}
                 </div>`;
                 }).join('')}
         </div>`;
@@ -773,27 +782,27 @@
             document.getElementById('calendarGrid').innerHTML = html;
         }
 
-        function showApptDetail(id) {
-            db = loadDB();
-            const apt = db.appointments.find(a => a.id === id);
+        async function showApptDetail(id) {
+            const apt = await SupabaseDB.obterAgendamento(id);
             if (!apt) return;
-            const prof = db.professionals.find(p => p.id === apt.professionalId);
-            const [y, m, dy] = apt.date.split('-');
+            const prof = _cache.profissionais.find(p => p.id === apt.profissional_id);
+            const [y, m, dy] = apt.data.split('-');
+            const time = apt.horario ? apt.horario.substring(0, 5) : '';
             const panel = document.getElementById('apptDetailPanel');
             const statusCls = apt.status === 'confirmed' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700';
             panel.classList.remove('hidden');
             document.getElementById('apptDetailContent').innerHTML = `
         <div class="grid grid-cols-2 gap-4 mb-4">
-            <div><p class="text-xs text-gray-500">Paciente</p><p class="font-semibold">${apt.patient}</p></div>
-            <div><p class="text-xs text-gray-500">Telefone</p><p class="font-semibold">${apt.phone || '-'}</p></div>
-            <div><p class="text-xs text-gray-500">Profissional</p><p class="font-semibold">${prof?.name || '-'}</p></div>
-            <div><p class="text-xs text-gray-500">Especialidade</p><p class="font-semibold">${prof?.specialty || '-'}</p></div>
+            <div><p class="text-xs text-gray-500">Paciente</p><p class="font-semibold">${apt.paciente_nome}</p></div>
+            <div><p class="text-xs text-gray-500">Telefone</p><p class="font-semibold">${apt.telefone || '-'}</p></div>
+            <div><p class="text-xs text-gray-500">Profissional</p><p class="font-semibold">${prof?.nome || '-'}</p></div>
+            <div><p class="text-xs text-gray-500">Especialidade</p><p class="font-semibold">${prof?.especialidade || '-'}</p></div>
             <div><p class="text-xs text-gray-500">Data</p><p class="font-semibold">${dy}/${m}/${y}</p></div>
-            <div><p class="text-xs text-gray-500">Horário</p><p class="font-semibold">${apt.time}</p></div>
-            <div><p class="text-xs text-gray-500">Tipo</p><p class="font-semibold">${apt.type}</p></div>
+            <div><p class="text-xs text-gray-500">Horário</p><p class="font-semibold">${time}</p></div>
+            <div><p class="text-xs text-gray-500">Tipo</p><p class="font-semibold">${apt.tipo}</p></div>
             <div><p class="text-xs text-gray-500">Status</p><span class="text-xs px-2 py-1 rounded-full font-medium ${statusCls}">${apt.status === 'confirmed' ? 'Confirmado' : 'Pendente'}</span></div>
         </div>
-        ${apt.notes ? `<div class="mb-4"><p class="text-xs text-gray-500 mb-1">Observações</p><p class="text-sm bg-gray-50 p-3 rounded-lg">${apt.notes}</p></div>` : ''}
+        ${apt.observacoes ? `<div class="mb-4"><p class="text-xs text-gray-500 mb-1">Observações</p><p class="text-sm bg-gray-50 p-3 rounded-lg">${apt.observacoes}</p></div>` : ''}
         <div class="flex gap-2">
             <button onclick="toggleStatus(${id})" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">
                 ${apt.status === 'confirmed' ? '⏳ Marcar Pendente' : '✅ Confirmar'}
@@ -803,18 +812,19 @@
             panel.scrollIntoView({ behavior: 'smooth' });
         }
 
-        function toggleStatus(id) {
-            db = loadDB();
-            const apt = db.appointments.find(a => a.id === id);
-            if (apt) { apt.status = apt.status === 'confirmed' ? 'pending' : 'confirmed'; saveDB(db); }
-            renderCalendar(); showApptDetail(id);
+        async function toggleStatus(id) {
+            const apt = await SupabaseDB.obterAgendamento(id);
+            if (apt) {
+                const newStatus = apt.status === 'confirmed' ? 'pending' : 'confirmed';
+                await SupabaseDB.atualizarStatusAgendamento(id, newStatus);
+            }
+            await renderCalendar();
+            showApptDetail(id);
         }
 
-        function deleteAppointment(id) {
+        async function deleteAppointment(id) {
             if (!confirm('Excluir este agendamento?')) return;
-            db = loadDB();
-            db.appointments = db.appointments.filter(a => a.id !== id);
-            saveDB(db);
+            await SupabaseDB.excluirAgendamento(id);
             document.getElementById('apptDetailPanel').classList.add('hidden');
             renderCalendar(); renderDashboard();
         }
@@ -822,22 +832,22 @@
         // =========================================================
         // PROFISSIONAIS
         // =========================================================
-        function renderProfessionals() {
-            db = loadDB();
+        async function renderProfessionals() {
+            await refreshCache();
             const container = document.getElementById('professionalsList');
-            if (db.professionals.length === 0) {
+            if (_cache.profissionais.length === 0) {
                 container.innerHTML = '<div class="col-span-3 text-center py-16 text-gray-400"><div class="text-5xl mb-3">👨‍⚕️</div><p>Nenhum profissional cadastrado.</p></div>';
                 return;
             }
-            container.innerHTML = db.professionals.map(prof => {
-                const appts = db.appointments.filter(a => a.professionalId === prof.id);
+            container.innerHTML = _cache.profissionais.map(prof => {
+                const appts = _cache.agendamentos.filter(a => a.profissional_id === prof.id);
                 return `<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
             <div class="flex items-start gap-4 mb-4">
-                <img src="${getPhoto(prof.name, prof.color)}" class="w-16 h-16 rounded-full shadow-sm">
+                <img src="${getPhoto(prof.nome, prof.cor, prof.foto_url)}" class="w-16 h-16 rounded-full shadow-sm object-cover">
                 <div class="flex-1 min-w-0">
-                    <h3 class="font-bold text-gray-900 truncate">${prof.name}</h3>
-                    <p class="text-sm text-blue-600 font-medium">${prof.specialty}</p>
-                    <p class="text-xs text-gray-500 mt-1">⏰ ${prof.start}–${prof.end} · ⏱️ ${prof.duration}min</p>
+                    <h3 class="font-bold text-gray-900 truncate">${prof.nome}</h3>
+                    <p class="text-sm text-blue-600 font-medium">${prof.especialidade}</p>
+                    <p class="text-xs text-gray-500 mt-1">⏰ ${prof.horario_inicio}–${prof.horario_fim} · ⏱️ ${prof.duracao_consulta}min</p>
                     <p class="text-xs text-gray-400 mt-1">${appts.length} agendamento(s)</p>
                 </div>
             </div>
@@ -849,20 +859,21 @@
             }).join('');
         }
 
-        function openProfModal(id) {
-            db = loadDB();
+        async function openProfModal(id) {
             const modal = document.getElementById('profModal');
             modal.classList.remove('hidden');
             if (id) {
-                const prof = db.professionals.find(p => p.id === id);
+                const prof = await SupabaseDB.obterProfissional(id);
                 document.getElementById('profModalTitle').textContent = 'Editar Profissional';
                 document.getElementById('profId').value = prof.id;
-                document.getElementById('profName').value = prof.name;
-                document.getElementById('profSpecialty').value = prof.specialty;
-                document.getElementById('profStart').value = prof.start;
-                document.getElementById('profEnd').value = prof.end;
-                document.getElementById('profDuration').value = prof.duration;
-                selectColor(prof.color);
+                document.getElementById('profName').value = prof.nome;
+                document.getElementById('profSpecialty').value = prof.especialidade;
+                document.getElementById('profStart').value = prof.horario_inicio;
+                document.getElementById('profEnd').value = prof.horario_fim;
+                document.getElementById('profDuration').value = prof.duracao_consulta;
+                document.getElementById('profPhoto').value = prof.foto_url || '';
+                updatePhotoPreview(prof.foto_url);
+                selectColor(prof.cor);
             } else {
                 document.getElementById('profModalTitle').textContent = 'Adicionar Profissional';
                 document.getElementById('profId').value = '';
@@ -871,9 +882,28 @@
                 document.getElementById('profStart').value = '08:00';
                 document.getElementById('profEnd').value = '18:00';
                 document.getElementById('profDuration').value = '60';
+                document.getElementById('profPhoto').value = '';
+                updatePhotoPreview('');
                 selectColor('3b82f6');
             }
         }
+
+        function updatePhotoPreview(url) {
+            const preview = document.getElementById('profPhotoPreview');
+            const img = document.getElementById('profPhotoPreviewImg');
+            if (url && url.trim()) {
+                img.src = url.trim();
+                preview.classList.remove('hidden');
+            } else {
+                preview.classList.add('hidden');
+                img.src = '';
+            }
+        }
+
+        // Live preview ao digitar URL da foto
+        document.getElementById('profPhoto').addEventListener('input', function () {
+            updatePhotoPreview(this.value);
+        });
 
         function closeProfModal() { document.getElementById('profModal').classList.add('hidden'); }
 
@@ -888,47 +918,51 @@
             }
         }
 
-        function saveProfessional() {
+        async function saveProfessional() {
             const name = document.getElementById('profName').value.trim();
             const specialty = document.getElementById('profSpecialty').value.trim();
             if (!name || !specialty) { alert('Preencha nome e especialidade.'); return; }
-            db = loadDB();
             const existingId = parseInt(document.getElementById('profId').value);
             const profData = {
-                name, specialty,
-                color: document.getElementById('profColor').value,
-                start: document.getElementById('profStart').value,
-                end: document.getElementById('profEnd').value,
-                duration: parseInt(document.getElementById('profDuration').value)
+                nome: name,
+                especialidade: specialty,
+                cor: document.getElementById('profColor').value,
+                horario_inicio: document.getElementById('profStart').value,
+                horario_fim: document.getElementById('profEnd').value,
+                duracao_consulta: parseInt(document.getElementById('profDuration').value),
+                foto_url: document.getElementById('profPhoto').value.trim()
             };
-            if (existingId) {
-                const idx = db.professionals.findIndex(p => p.id === existingId);
-                db.professionals[idx] = { ...db.professionals[idx], ...profData };
-            } else {
-                db.professionals.push({ id: db.nextProfId++, ...profData });
+            try {
+                if (existingId) {
+                    await SupabaseDB.atualizarProfissional(existingId, profData);
+                } else {
+                    await SupabaseDB.criarProfissional(profData);
+                }
+                closeProfModal();
+                renderProfessionals();
+            } catch (e) {
+                alert('Erro ao salvar: ' + e.message);
             }
-            saveDB(db);
-            closeProfModal();
-            renderProfessionals();
         }
 
-        function deleteProfessional(id) {
+        async function deleteProfessional(id) {
             if (!confirm('Excluir este profissional? Os agendamentos associados também serão removidos.')) return;
-            db = loadDB();
-            db.professionals = db.professionals.filter(p => p.id !== id);
-            db.appointments = db.appointments.filter(a => a.professionalId !== id);
-            saveDB(db);
-            renderProfessionals();
+            try {
+                await SupabaseDB.excluirProfissional(id);
+                renderProfessionals();
+            } catch (e) {
+                alert('Erro ao excluir: ' + e.message);
+            }
         }
 
         // =========================================================
         // PACIENTES
         // =========================================================
-        function renderPatients() {
-            db = loadDB();
+        async function renderPatients() {
+            await refreshCache();
             const search = (document.getElementById('patientSearch')?.value || '').toLowerCase();
-            let patients = db.patients;
-            if (search) patients = patients.filter(p => p.name.toLowerCase().includes(search) || (p.phone || '').includes(search));
+            let patients = _cache.pacientes;
+            if (search) patients = patients.filter(p => p.nome.toLowerCase().includes(search) || (p.telefone || '').includes(search));
 
             const empty = document.getElementById('patientsEmpty');
             const list = document.getElementById('patientsList');
@@ -940,48 +974,48 @@
             }
             empty.classList.add('hidden');
             list.innerHTML = patients.map(p => {
-                const appts = db.appointments.filter(a => a.phone === p.phone);
-                const lastAppt = appts.length ? appts.sort((a, b) => b.date.localeCompare(a.date))[0] : null;
-                const [y, m, d] = lastAppt ? lastAppt.date.split('-') : [];
+                const appts = _cache.agendamentos.filter(a => a.telefone === p.telefone);
+                const lastAppt = appts.length ? appts.sort((a, b) => b.data.localeCompare(a.data))[0] : null;
+                const [y, m, d] = lastAppt ? lastAppt.data.split('-') : [];
                 return `<tr class="hover:bg-gray-50">
             <td class="px-6 py-3">
                 <div class="flex items-center gap-3">
-                    <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=random" class="w-9 h-9 rounded-full">
-                    <span class="font-medium text-gray-900 text-sm">${p.name}</span>
+                    <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(p.nome)}&background=random" class="w-9 h-9 rounded-full">
+                    <span class="font-medium text-gray-900 text-sm">${p.nome}</span>
                 </div>
             </td>
-            <td class="px-6 py-3 text-gray-600 text-sm">${p.phone || '-'}</td>
+            <td class="px-6 py-3 text-gray-600 text-sm">${p.telefone || '-'}</td>
             <td class="px-6 py-3 text-gray-600 text-sm truncate max-w-[120px]">${p.email || '-'}</td>
             <td class="px-6 py-3 text-gray-600 text-sm">${lastAppt ? `${d}/${m}/${y}` : '-'}</td>
             <td class="px-6 py-3 text-gray-600 text-sm">${appts.length}</td>
             <td class="px-6 py-3">
-                <button onclick="showPatientDetail('${encodeURIComponent(p.phone)}')" class="text-blue-600 hover:text-blue-700 font-medium text-sm">Ver →</button>
+                <button onclick="showPatientDetail('${encodeURIComponent(p.telefone)}')" class="text-blue-600 hover:text-blue-700 font-medium text-sm">Ver →</button>
             </td>
         </tr>`;
             }).join('');
         }
 
         function showPatientDetail(encodedPhone) {
-            db = loadDB();
             const phone = decodeURIComponent(encodedPhone);
-            const p = db.patients.find(pt => pt.phone === phone);
+            const p = _cache.pacientes.find(pt => pt.telefone === phone);
             if (!p) return;
-            const appts = db.appointments.filter(a => a.phone === phone).sort((a, b) => b.date.localeCompare(a.date));
+            const appts = _cache.agendamentos.filter(a => a.telefone === phone).sort((a, b) => b.data.localeCompare(a.data));
             document.getElementById('patientModalContent').innerHTML = `
         <div class="flex items-center gap-4 mb-5 pb-4 border-b">
-            <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=3b82f6&color=fff&size=64" class="w-16 h-16 rounded-full">
+            <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(p.nome)}&background=3b82f6&color=fff&size=64" class="w-16 h-16 rounded-full">
             <div>
-                <h4 class="font-bold text-lg text-gray-900">${p.name}</h4>
-                <p class="text-sm text-gray-500">${p.phone || ''} ${p.email ? '· ' + p.email : ''}</p>
+                <h4 class="font-bold text-lg text-gray-900">${p.nome}</h4>
+                <p class="text-sm text-gray-500">${p.telefone || ''} ${p.email ? '· ' + p.email : ''}</p>
             </div>
         </div>
         <h5 class="font-semibold text-gray-700 mb-2 text-sm">Histórico de Agendamentos (${appts.length})</h5>
         ${appts.length ? appts.map(a => {
-                const prof = db.professionals.find(pr => pr.id === a.professionalId);
-                const [yr, mo, dy] = a.date.split('-');
+                const prof = _cache.profissionais.find(pr => pr.id === a.profissional_id);
+                const [yr, mo, dy] = a.data.split('-');
+                const time = a.horario ? a.horario.substring(0, 5) : '';
                 return `<div class="bg-gray-50 rounded-lg p-3 mb-2 text-sm">
-                <div class="flex justify-between"><span class="font-medium">${dy}/${mo}/${yr} às ${a.time}</span><span class="${a.status === 'confirmed' ? 'text-green-600' : 'text-orange-600'} text-xs font-medium">${a.status === 'confirmed' ? 'Confirmado' : 'Pendente'}</span></div>
-                <div class="text-gray-500 text-xs mt-1">${prof?.name || '?'} · ${a.type}</div>
+                <div class="flex justify-between"><span class="font-medium">${dy}/${mo}/${yr} às ${time}</span><span class="${a.status === 'confirmed' ? 'text-green-600' : 'text-orange-600'} text-xs font-medium">${a.status === 'confirmed' ? 'Confirmado' : 'Pendente'}</span></div>
+                <div class="text-gray-500 text-xs mt-1">${prof?.nome || '?'} · ${a.tipo}</div>
             </div>`;
             }).join('') : '<p class="text-gray-400 text-sm">Sem agendamentos.</p>'}`;
             document.getElementById('patientModal').classList.remove('hidden');
@@ -992,10 +1026,10 @@
         // =========================================================
         // MODAL: NOVO AGENDAMENTO
         // =========================================================
-        function openNewAppointmentModal() {
-            db = loadDB();
+        async function openNewAppointmentModal() {
+            await refreshCache();
             const select = document.getElementById('apptProf');
-            select.innerHTML = db.professionals.map(p => `<option value="${p.id}">${p.name} – ${p.specialty}</option>`).join('');
+            select.innerHTML = _cache.profissionais.filter(p => p.ativo).map(p => `<option value="${p.id}">${p.nome} – ${p.especialidade}</option>`).join('');
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('apptDate').value = today;
             document.getElementById('apptDate').min = today;
@@ -1007,7 +1041,7 @@
 
         function closeApptModal() { document.getElementById('apptModal').classList.add('hidden'); }
 
-        function saveAppointment() {
+        async function saveAppointment() {
             const profId = parseInt(document.getElementById('apptProf').value);
             const date = document.getElementById('apptDate').value;
             const time = document.getElementById('apptTime').value;
@@ -1015,46 +1049,52 @@
             const phone = document.getElementById('apptPhone').value.trim();
             const type = document.getElementById('apptType').value;
             if (!profId || !date || !time || !patient) { alert('Preencha todos os campos obrigatórios.'); return; }
-            db = loadDB();
-            db.appointments.push({ id: db.nextApptId++, professionalId: profId, patient, phone, date, time, type, status: 'confirmed', notes: '' });
-            upsertPatient(patient, phone, '');
-            saveDB(db);
-            closeApptModal();
-            renderDashboard();
-            alert('Agendamento criado com sucesso!');
+            try {
+                await SupabaseDB.criarAgendamento({
+                    profissional_id: profId,
+                    paciente_nome: patient,
+                    telefone: phone,
+                    data: date,
+                    horario: time,
+                    tipo: type,
+                    status: 'confirmed'
+                });
+                closeApptModal();
+                renderDashboard();
+                alert('Agendamento criado com sucesso!');
+            } catch (e) {
+                alert('Erro ao criar agendamento: ' + e.message);
+            }
         }
 
-        function upsertPatient(name, phone, email) {
-            const existing = db.patients.find(p => p.phone === phone);
-            if (!existing && phone) db.patients.push({ name, phone, email });
-        }
+
 
         // =========================================================
         // PRONTUÁRIO
         // =========================================================
-        function initProntuario() {
-            db = loadDB();
+        async function initProntuario() {
+            await refreshCache();
             // Populando selects
             const selPac = document.getElementById('pront-paciente');
             selPac.innerHTML = '<option value="">Selecione um paciente...</option>';
-            db.patients.forEach(p => {
+            _cache.pacientes.forEach(p => {
                 const opt = document.createElement('option');
-                opt.value = p.phone;
-                opt.textContent = p.name;
-                opt.dataset.phone = p.phone;
+                opt.value = p.telefone;
+                opt.textContent = p.nome;
+                opt.dataset.phone = p.telefone;
                 selPac.appendChild(opt);
             });
             selPac.onchange = function () {
-                const p = db.patients.find(x => x.phone === this.value);
-                if (p) document.getElementById('pront-telefone').value = p.phone;
+                const p = _cache.pacientes.find(x => x.telefone === this.value);
+                if (p) document.getElementById('pront-telefone').value = p.telefone;
             };
 
             const selProf = document.getElementById('pront-profissional');
             selProf.innerHTML = '<option value="">Selecione o profissional...</option>';
-            db.professionals.forEach(p => {
+            _cache.profissionais.forEach(p => {
                 const opt = document.createElement('option');
-                opt.value = p.name;
-                opt.textContent = `${p.name} — ${p.specialty}`;
+                opt.value = p.nome;
+                opt.textContent = `${p.nome} — ${p.especialidade}`;
                 selProf.appendChild(opt);
             });
 
@@ -1171,13 +1211,11 @@
             }
         }
 
-        function salvarProntuario() {
+        async function salvarProntuario() {
             const queixa = document.getElementById('pront-queixa').value;
             if (!queixa) { alert('Preencha pelo menos a Queixa Principal para salvar.'); return; }
 
             // --- Coleta dos dados ---
-            db = loadDB();
-            if (!db.prontuarios) db.prontuarios = [];
             const pac = document.getElementById('pront-paciente');
             const nomePac = pac.options[pac.selectedIndex]?.text || 'Paciente não identificado';
             const data = document.getElementById('pront-data').value;
@@ -1200,12 +1238,30 @@
             const obs = document.getElementById('pront-obs').value;
             const clinica = document.getElementById('clinicNameHeader')?.textContent || 'Clínica';
 
-            // --- Salva no localStorage ---
-            db.prontuarios.push({
-                id: Date.now(), paciente: nomePac, data, queixa,
-                texto: gerarTextoProntuario(), criadoEm: new Date().toISOString()
-            });
-            saveDB(db);
+            // --- Salva no Supabase ---
+            try {
+                await SupabaseDB.criarProntuario({
+                    paciente_nome: nomePac,
+                    profissional_nome: prof,
+                    medico_nome: medico,
+                    crm,
+                    data_consulta: data,
+                    queixa_principal: queixa,
+                    anamnese,
+                    pressao_arterial: pa,
+                    freq_cardiaca: fc,
+                    temperatura: temp,
+                    peso_altura: peso,
+                    exame_fisico: exame,
+                    diagnostico: diag,
+                    medicamentos: meds,
+                    conduta,
+                    retorno,
+                    observacoes: obs
+                });
+            } catch (e) {
+                console.warn('Erro ao salvar prontuário no Supabase:', e.message);
+            }
             renderProntuariosSalvos();
 
             // --- Gera janela PDF ---
@@ -1337,35 +1393,41 @@
             win.document.close();
         }
 
-        function renderProntuariosSalvos() {
-            db = loadDB();
+        async function renderProntuariosSalvos() {
             const lista = document.getElementById('pront-lista');
-            const pronts = db.prontuarios || [];
-            if (pronts.length === 0) {
-                lista.innerHTML = '<p class="text-sm text-gray-400 text-center py-4">Nenhum prontuário salvo ainda.</p>';
-                return;
-            }
-            lista.innerHTML = pronts.slice().reverse().map(p => {
-                const [y, m, d] = p.data ? p.data.split('-') : ['', '', ''];
-                const dataFmt = p.data ? `${d}/${m}/${y}` : '';
-                return `<div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                    <div class="flex items-start justify-between gap-2">
-                        <div class="min-w-0">
-                            <p class="text-sm font-semibold text-gray-800 truncate">${p.paciente}</p>
-                            <p class="text-xs text-gray-500">${dataFmt} · ${p.queixa.substring(0, 40)}${p.queixa.length > 40 ? '...' : ''}</p>
+            try {
+                const pronts = await SupabaseDB.listarProntuarios();
+                if (pronts.length === 0) {
+                    lista.innerHTML = '<p class="text-sm text-gray-400 text-center py-4">Nenhum prontuário salvo ainda.</p>';
+                    return;
+                }
+                lista.innerHTML = pronts.map(p => {
+                    const [y, m, d] = p.data_consulta ? p.data_consulta.split('-') : ['', '', ''];
+                    const dataFmt = p.data_consulta ? `${d}/${m}/${y}` : '';
+                    const queixa = p.queixa_principal || '';
+                    return `<div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0">
+                                <p class="text-sm font-semibold text-gray-800 truncate">${p.paciente_nome}</p>
+                                <p class="text-xs text-gray-500">${dataFmt} · ${queixa.substring(0, 40)}${queixa.length > 40 ? '...' : ''}</p>
+                            </div>
+                            <button onclick="excluirProntuario(${p.id})" class="text-red-400 hover:text-red-600 text-xs shrink-0">🗑️</button>
                         </div>
-                        <button onclick="excluirProntuario(${p.id})" class="text-red-400 hover:text-red-600 text-xs shrink-0">🗑️</button>
-                    </div>
-                </div>`;
-            }).join('');
+                    </div>`;
+                }).join('');
+            } catch (e) {
+                lista.innerHTML = '<p class="text-sm text-red-400 text-center py-4">Erro ao carregar prontuários.</p>';
+            }
         }
 
-        function excluirProntuario(id) {
+        async function excluirProntuario(id) {
             if (!confirm('Excluir este prontuário?')) return;
-            db = loadDB();
-            db.prontuarios = (db.prontuarios || []).filter(p => p.id !== id);
-            saveDB(db);
-            renderProntuariosSalvos();
+            try {
+                await SupabaseDB.excluirProntuario(id);
+                renderProntuariosSalvos();
+            } catch (e) {
+                alert('Erro ao excluir: ' + e.message);
+            }
         }
 
         function limparProntuario() {
@@ -1380,8 +1442,8 @@
         // =========================================================
         // INIT
         // =========================================================
-        document.addEventListener('DOMContentLoaded', () => {
-            renderDashboard();
+        document.addEventListener('DOMContentLoaded', async () => {
+            await renderDashboard();
             // Close modals on overlay click
             ['profModal', 'apptModal', 'patientModal'].forEach(id => {
                 document.getElementById(id).addEventListener('click', function (e) {
