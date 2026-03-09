@@ -612,8 +612,8 @@
         // =========================================================
         // AUTENTICAÇÃO JWT
         // =========================================================
-        const TOKEN_KEY = 'agendafacil_token';
-        const CLINICA_KEY = 'agendafacil_clinica';
+        const TOKEN_KEY = 'sb-access-token';
+        const CLINICA_KEY = 'sb-user-id';
 
         function getToken() {
             return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
